@@ -1,0 +1,28 @@
+# Web framework
+fastapi==0.115.12
+uvicorn[standard]==0.34.2
+
+# ORM / Database
+sqlmodel==0.0.22
+sqlalchemy==2.0.40
+alembic==1.14.1                # schema migrations (replaces the old PRAGMA user_version scheme)
+
+# Auth
+bcrypt==4.3.0                  # Direct bcrypt – passlib is unmaintained and breaks with bcrypt>=4
+python-jose[cryptography]==3.4.0
+python-multipart==0.0.20   # Required for OAuth2 form-based login
+
+# Templating
+jinja2==3.1.6
+
+# PDF generation
+weasyprint==65.1
+
+# QR / SPAYD (CZ/SK payment QR codes)
+qrplatba==1.2.0
+
+# CSV / stdlib — no extra dep needed
+
+# Testing (dev only — not required at runtime)
+pytest==9.1.0
+httpx==0.28.1                  # required by fastapi.testclient (TestClient)

@@ -1,0 +1,213 @@
+{# Shared invoice table (used by the dashboard and the Faktury list page).
+   `redirect_to` is where the paid/unpaid actions return after submitting. #}
+{% macro invoice_table(invoices, today_date, redirect_to="/") %}
+<table class="w-full text-sm text-left">
+  <thead class="bg-gray-50 text-xs font-semibold text-gray-500 uppercase tracking-wide">
+    <tr>
+      <th class="px-4 py-3">VS</th>
+      <th class="px-4 py-3">Klient</th>
+      <th class="px-4 py-3 text-right">Částka</th>
+      <th class="px-4 py-3">Splatnost</th>
+      <th class="px-4 py-3">Stav</th>
+      <th class="px-4 py-3 text-right">Akce</th>
+    </tr>
+  </thead>
+  <tbody class="divide-y divide-gray-100">
+    {% for inv in invoices %}
+    {% set today = today_date %}
+    {% set cn = inv.doc_type == 'credit_note' %}
+    <tr class="hover:bg-gray-50 transition-colors">
+
+      <td class="px-4 py-3 font-mono font-semibold text-blue-700 whitespace-nowrap">
+        {{ inv.variable_symbol }}
+        {% if cn %}
+        <span class="ml-1 bg-gray-100 text-gray-600 text-[10px] font-sans font-semibold
+                     px-1.5 py-0.5 rounded-full uppercase tracking-wide align-middle">Dobropis</span>
+        {% endif %}
+      </td>
+      <td class="px-4 py-3 text-gray-800">{{ inv.contact_name }}</td>
+      <td class="px-4 py-3 text-right font-semibold text-gray-800 whitespace-nowrap">
+        {{ inv.amount | money(inv.currency) }}
+      </td>
+
+      {# Date due – issue date shown on hover; overdue unpaid in red #}
+      <td class="px-4 py-3 whitespace-nowrap
+                 {% if not inv.is_paid and inv.date_due < today %}text-red-600 font-semibold
+                 {% else %}text-gray-500{% endif %}">
+        <span class="cursor-help border-b border-dotted border-gray-300"
+              title="Vystaveno {{ inv.date_issued.strftime('%d.%m.%Y') }}">
+          {{ inv.date_due.strftime("%d.%m.%Y") }}
+        </span>
+      </td>
+
+      {# Status badge #}
+      <td class="px-4 py-3">
+        {% if inv.is_paid %}
+        <span class="badge-paid text-xs font-semibold px-2.5 py-0.5 rounded-full">{{ 'Vráceno' if cn else 'Uhrazeno' }}</span>
+        {% elif inv.date_due < today %}
+        <span class="badge-overdue text-xs font-semibold px-2.5 py-0.5 rounded-full">Po splatnosti</span>
+        {% else %}
+        <span class="badge-unpaid text-xs font-semibold px-2.5 py-0.5 rounded-full">{{ 'Čeká na vrácení' if cn else 'Čeká na úhradu' }}</span>
+        {% endif %}
+      </td>
+
+      {# Actions – 3-dot menu #}
+      <td class="px-4 py-3 text-right whitespace-nowrap relative">
+        <button type="button" aria-label="Akce"
+                class="kebab-btn inline-flex items-center justify-center w-8 h-8 rounded-full
+                       text-gray-400 hover:text-gray-700 hover:bg-gray-100 transition-colors">
+          <span class="text-lg leading-none">&#8942;</span>
+        </button>
+
+        <div class="kebab-menu hidden absolute right-3 top-full z-30 mt-1 w-60
+                    bg-white border border-gray-200 rounded-lg shadow-lg p-1.5 text-left">
+
+          {% if inv.is_paid %}
+          <form method="post" action="/ui/faktury/{{ inv.id }}/prepnout-zaplaceno">
+            <input type="hidden" name="redirect_to" value="{{ redirect_to }}">
+            <button type="submit"
+                    class="block w-full text-left px-2.5 py-1.5 text-sm text-red-600
+                           rounded hover:bg-red-50 transition-colors">
+              {{ 'Označit jako nevráceno' if cn else 'Označit jako nezaplaceno' }}
+            </button>
+          </form>
+          {% else %}
+          <div class="px-2.5 pt-1.5 pb-2">
+            <p class="text-[11px] font-semibold text-gray-400 uppercase tracking-wide mb-1.5">{{ 'Vráceno' if cn else 'Zaplaceno' }}</p>
+            {# Custom date #}
+            <form method="post" action="/ui/faktury/{{ inv.id }}/prepnout-zaplaceno"
+                  class="flex items-center gap-1.5 mb-2">
+              <input type="hidden" name="redirect_to" value="{{ redirect_to }}">
+              <input type="date" name="date_paid" value="{{ today_date.isoformat() }}"
+                     class="flex-1 text-xs border border-gray-300 rounded px-2 py-1
+                            focus:outline-none focus:ring-1 focus:ring-green-400">
+              <button type="submit"
+                      class="text-xs font-semibold text-white bg-green-600 hover:bg-green-700
+                             rounded px-2.5 py-1 transition-colors">OK</button>
+            </form>
+            {# Quick: on due date #}
+            <form method="post" action="/ui/faktury/{{ inv.id }}/prepnout-zaplaceno">
+              <input type="hidden" name="redirect_to" value="{{ redirect_to }}">
+              <input type="hidden" name="date_paid" value="{{ inv.date_due.isoformat() }}">
+              <button type="submit"
+                      class="block w-full text-left px-2 py-1.5 text-sm text-gray-700
+                             rounded hover:bg-gray-50 transition-colors">
+                {{ 'Vráceno v den splatnosti' if cn else 'Zaplaceno v den splatnosti' }}
+              </button>
+            </form>
+            {# Quick: today #}
+            <form method="post" action="/ui/faktury/{{ inv.id }}/prepnout-zaplaceno">
+              <input type="hidden" name="redirect_to" value="{{ redirect_to }}">
+              <input type="hidden" name="date_paid" value="{{ today_date.isoformat() }}">
+              <button type="submit"
+                      class="block w-full text-left px-2 py-1.5 text-sm text-gray-700
+                             rounded hover:bg-gray-50 transition-colors">
+                {{ 'Vráceno dnes' if cn else 'Zaplaceno dnes' }}
+              </button>
+            </form>
+          </div>
+          {% endif %}
+
+          <div class="border-t border-gray-100 my-1"></div>
+
+          <a href="/faktury/{{ inv.id }}"
+             class="block px-2.5 py-1.5 text-sm text-gray-700 rounded hover:bg-gray-50 transition-colors">{{ 'Zobrazit dobropis' if cn else 'Zobrazit fakturu' }}</a>
+          {% if not cn %}
+          <a href="/faktury/{{ inv.id }}/upravit"
+             class="block px-2.5 py-1.5 text-sm text-gray-700 rounded hover:bg-gray-50 transition-colors">Upravit fakturu</a>
+          <a href="/faktury/{{ inv.id }}/dobropis"
+             class="block px-2.5 py-1.5 text-sm text-gray-700 rounded hover:bg-gray-50 transition-colors">Vystavit dobropis</a>
+          {% endif %}
+          <a href="/invoices/{{ inv.id }}/pdf"
+             class="block px-2.5 py-1.5 text-sm text-gray-700 rounded hover:bg-gray-50 transition-colors">{{ 'Stáhnout dobropis (PDF)' if cn else 'Stáhnout fakturu (PDF)' }}</a>
+
+          {# Delete – unpaid only (a paid document must first be marked unpaid) #}
+          {% if not inv.is_paid %}
+          <div class="border-t border-gray-100 my-1"></div>
+          <form method="post" action="/ui/faktury/{{ inv.id }}/smazat"
+                onsubmit="return confirm('Opravdu smazat {{ 'dobropis' if cn else 'fakturu' }} {{ inv.variable_symbol }}? Číslo v řadě zůstane vynechané, pokud nejde o poslední doklad.')">
+            <input type="hidden" name="redirect_to" value="{{ redirect_to }}">
+            <button type="submit"
+                    class="block w-full text-left px-2.5 py-1.5 text-sm text-red-600
+                           rounded hover:bg-red-50 transition-colors">
+              {{ 'Smazat dobropis' if cn else 'Smazat fakturu' }}
+            </button>
+          </form>
+          {% endif %}
+        </div>
+      </td>
+
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+{% endmacro %}
+
+
+{# Shared expense (náklad) table, used by the dashboard and the Náklady page.
+   `redirect_to` is where the attach/delete actions return after submitting. #}
+{% macro expense_table(expenses, redirect_to="/") %}
+<table class="w-full text-sm text-left">
+  <thead class="bg-gray-50 text-xs font-semibold text-gray-500 uppercase tracking-wide">
+    <tr>
+      <th class="px-4 py-3">Datum</th>
+      <th class="px-4 py-3">Kategorie</th>
+      <th class="px-4 py-3">Popis</th>
+      <th class="px-4 py-3 text-right">Částka</th>
+      <th class="px-4 py-3 text-center">Doklad</th>
+      <th class="px-4 py-3 text-right">Akce</th>
+    </tr>
+  </thead>
+  <tbody class="divide-y divide-gray-100">
+    {% for exp in expenses %}
+    <tr class="hover:bg-gray-50 transition-colors">
+      <td class="px-4 py-3 text-gray-500 whitespace-nowrap">{{ exp.date.strftime("%d.%m.%Y") }}</td>
+      <td class="px-4 py-3">
+        <span class="bg-gray-100 text-gray-700 text-xs font-medium px-2 py-0.5 rounded-full">{{ exp.category }}</span>
+      </td>
+      <td class="px-4 py-3 text-gray-700">{{ exp.description }}</td>
+      <td class="px-4 py-3 text-right font-semibold text-gray-800 whitespace-nowrap">
+        {{ exp.amount | money(exp.currency) }}
+      </td>
+      <td class="px-4 py-3 text-center whitespace-nowrap">
+        {% if exp.attachment_path %}
+          {% set _rel = exp.attachment_path.split('/uploads/')[-1] %}
+          <a href="/uploads/{{ _rel }}" target="_blank" title="Zobrazit doklad"
+             class="inline-flex items-center gap-1 text-xs text-blue-600 hover:text-blue-800 font-medium transition-colors">
+            &#128206; doklad
+          </a>
+          <form method="post" action="/ui/naklady/{{ exp.id }}/smazat-sken" class="inline">
+            <input type="hidden" name="redirect_to" value="{{ redirect_to }}">
+            <button type="submit" title="Odstranit doklad"
+                    class="ml-1 text-xs text-gray-400 hover:text-red-500 transition-colors">&times;</button>
+          </form>
+        {% else %}
+          <form method="post" action="/ui/naklady/{{ exp.id }}/nahrat-sken"
+                enctype="multipart/form-data" class="inline-flex items-center gap-1">
+            <input type="hidden" name="redirect_to" value="{{ redirect_to }}">
+            <label class="cursor-pointer text-xs text-gray-400 hover:text-blue-600 transition-colors" title="Přiložit doklad">
+              &#128206;
+              <input type="file" name="scan" accept="image/jpeg,image/png,application/pdf"
+                     class="hidden" onchange="this.form.submit()">
+            </label>
+          </form>
+        {% endif %}
+      </td>
+      <td class="px-4 py-3 text-right whitespace-nowrap">
+        <a href="/naklady/{{ exp.id }}/upravit?redirect_to={{ redirect_to | urlencode }}"
+           class="text-xs text-blue-600 hover:text-blue-800 font-medium transition-colors">
+          Upravit
+        </a>
+        <form method="post" action="/ui/naklady/{{ exp.id }}/smazat" class="inline ml-3"
+              onsubmit="return confirm('Opravdu smazat tento náklad?')">
+          <input type="hidden" name="redirect_to" value="{{ redirect_to }}">
+          <button type="submit" class="text-xs text-red-500 hover:text-red-700 font-medium transition-colors">
+            Smazat
+          </button>
+        </form>
+      </td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+{% endmacro %}

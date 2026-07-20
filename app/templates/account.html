@@ -1,0 +1,401 @@
+{% extends "base.html" %}
+{% block title %}Nastavení účtu{% endblock %}
+
+{% block content %}
+
+<div class="max-w-lg mx-auto">
+
+  <div class="flex items-center justify-between mb-6">
+    <h1 class="text-2xl font-bold text-gray-800">Nastavení účtu</h1>
+  </div>
+
+  {% if error %}
+  <div class="bg-red-50 border border-red-300 text-red-700 rounded px-4 py-3 text-sm mb-5">
+    {{ error }}
+  </div>
+  {% endif %}
+
+  {% if success and not supplier_success %}
+  <div class="bg-green-50 border border-green-300 text-green-700 rounded px-4 py-3 text-sm mb-5">
+    {{ success }}
+  </div>
+  {% endif %}
+
+  {# ── Credentials form ────────────────────────────────────────────────────── #}
+  <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-6">
+
+    <form method="post" action="/ui/ucet" class="space-y-5">
+
+      <div>
+        <p class="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">
+          Přihlašovací jméno
+        </p>
+        <p class="text-sm font-mono text-gray-800">{{ user.username }}</p>
+      </div>
+
+      <hr class="border-gray-100">
+
+      <div>
+        <label for="new_username" class="block text-sm font-medium text-gray-700 mb-1">
+          Nové uživatelské jméno
+          <span class="text-gray-400 text-xs">(ponechte prázdné pro beze změny)</span>
+        </label>
+        <input type="text" id="new_username" name="new_username"
+               autocomplete="username"
+               placeholder="{{ user.username }}"
+               class="w-full border border-gray-300 rounded-md px-3 py-2 text-sm
+                      focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+      </div>
+
+      <div>
+        <label for="new_password" class="block text-sm font-medium text-gray-700 mb-1">
+          Nové heslo
+          <span class="text-gray-400 text-xs">(ponechte prázdné pro beze změny, min. 8 znaků)</span>
+        </label>
+        <input type="password" id="new_password" name="new_password"
+               autocomplete="new-password"
+               class="w-full border border-gray-300 rounded-md px-3 py-2 text-sm
+                      focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+      </div>
+
+      <div>
+        <label for="confirm_password" class="block text-sm font-medium text-gray-700 mb-1">
+          Potvrdit nové heslo
+        </label>
+        <input type="password" id="confirm_password" name="confirm_password"
+               autocomplete="new-password"
+               class="w-full border border-gray-300 rounded-md px-3 py-2 text-sm
+                      focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+      </div>
+
+      <hr class="border-gray-100">
+
+      <div>
+        <label for="current_password" class="block text-sm font-medium text-gray-700 mb-1">
+          Současné heslo <span class="text-red-500">*</span>
+        </label>
+        <input type="password" id="current_password" name="current_password"
+               required autocomplete="current-password"
+               class="w-full border border-gray-300 rounded-md px-3 py-2 text-sm
+                      focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+        <p class="text-xs text-gray-400 mt-1">
+          Potvrzení vaší totožnosti je vyžadováno pro uložení jakékoli změny.
+        </p>
+      </div>
+
+      <div class="flex justify-end pt-2">
+        <button type="submit"
+                class="px-6 py-2.5 rounded-md bg-blue-700 hover:bg-blue-800 text-white
+                       text-sm font-semibold transition-colors focus:outline-none
+                       focus:ring-2 focus:ring-offset-2 focus:ring-blue-600">
+          Uložit změny
+        </button>
+      </div>
+
+    </form>
+  </div>
+
+  {# ── Supplier profile form ────────────────────────────────────────────────── #}
+
+  {% if success and supplier_success %}
+  <div class="bg-green-50 border border-green-300 text-green-700 rounded px-4 py-3 text-sm mb-5">
+    {{ success }}
+  </div>
+  {% endif %}
+
+  <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+
+    <h2 class="text-base font-semibold text-gray-800 mb-4">Profil dodavatele</h2>
+
+    <form method="post" action="/ui/ucet/dodavatel" class="space-y-5" id="supplier-form">
+
+      <div class="grid grid-cols-2 gap-4">
+        <div class="col-span-2">
+          <label for="sp_name" class="block text-sm font-medium text-gray-700 mb-1">
+            Jméno / Název firmy <span class="text-red-500">*</span>
+          </label>
+          <input type="text" id="sp_name" name="name"
+                 value="{{ supplier.name if supplier else '' }}"
+                 placeholder="Jan Novák"
+                 class="w-full border border-gray-300 rounded-md px-3 py-2 text-sm
+                        focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+        </div>
+
+        <div class="col-span-2">
+          <label for="sp_address" class="block text-sm font-medium text-gray-700 mb-1">
+            Adresa
+          </label>
+          <textarea id="sp_address" name="address" rows="3"
+                    placeholder="Ulice 1&#10;110 00 Praha 1&#10;Česká republika"
+                    class="w-full border border-gray-300 rounded-md px-3 py-2 text-sm
+                           focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500
+                           resize-none">{{ supplier.address if supplier else '' }}</textarea>
+        </div>
+
+        <div>
+          <label for="sp_ic" class="block text-sm font-medium text-gray-700 mb-1">IČO</label>
+          <input type="text" id="sp_ic" name="ic"
+                 value="{{ supplier.ic if supplier else '' }}"
+                 placeholder="12345678" maxlength="20"
+                 class="w-full border border-gray-300 rounded-md px-3 py-2 text-sm
+                        font-mono focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+        </div>
+        <div>
+          <label for="sp_dic" class="block text-sm font-medium text-gray-700 mb-1">
+            DIČ <span class="text-gray-400 text-xs">(nepovinné)</span>
+          </label>
+          <input type="text" id="sp_dic" name="dic"
+                 value="{{ supplier.dic if supplier and supplier.dic else '' }}"
+                 placeholder="CZ12345678" maxlength="20"
+                 class="w-full border border-gray-300 rounded-md px-3 py-2 text-sm
+                        font-mono focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+        </div>
+
+        <div>
+          <label for="sp_email" class="block text-sm font-medium text-gray-700 mb-1">
+            E-mail <span class="text-gray-400 text-xs">(nepovinné)</span>
+          </label>
+          <input type="email" id="sp_email" name="email"
+                 value="{{ supplier.email if supplier and supplier.email else '' }}"
+                 placeholder="ja@firma.cz"
+                 class="w-full border border-gray-300 rounded-md px-3 py-2 text-sm
+                        focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+        </div>
+        <div>
+          <label for="sp_phone" class="block text-sm font-medium text-gray-700 mb-1">
+            Telefon <span class="text-gray-400 text-xs">(nepovinné)</span>
+          </label>
+          <input type="text" id="sp_phone" name="phone"
+                 value="{{ supplier.phone if supplier and supplier.phone else '' }}"
+                 placeholder="+420 600 000 000"
+                 class="w-full border border-gray-300 rounded-md px-3 py-2 text-sm
+                        focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+        </div>
+
+      </div>
+
+      <hr class="border-gray-100">
+
+      <p class="text-xs font-semibold text-gray-500 uppercase tracking-wide">Bankovní účet</p>
+
+      <div class="grid grid-cols-3 gap-3">
+        <div>
+          <label for="sp_bank_prefix" class="block text-sm font-medium text-gray-700 mb-1">
+            Předčíslí <span class="text-gray-400 text-xs">(nepovinné)</span>
+          </label>
+          <input type="text" id="sp_bank_prefix" name="bank_prefix"
+                 value="{{ supplier.bank_prefix if supplier and supplier.bank_prefix else '' }}"
+                 placeholder="19" maxlength="6"
+                 class="w-full border border-gray-300 rounded-md px-3 py-2 text-sm
+                        font-mono focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+        </div>
+        <div>
+          <label for="sp_bank_number" class="block text-sm font-medium text-gray-700 mb-1">
+            Číslo účtu <span class="text-red-500">*</span>
+          </label>
+          <input type="text" id="sp_bank_number" name="bank_number"
+                 value="{{ supplier.bank_number if supplier else '' }}"
+                 placeholder="2000145399" maxlength="10"
+                 class="w-full border border-gray-300 rounded-md px-3 py-2 text-sm
+                        font-mono focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+        </div>
+        <div>
+          <label for="sp_bank_code" class="block text-sm font-medium text-gray-700 mb-1">
+            Kód banky <span class="text-red-500">*</span>
+          </label>
+          <input type="text" id="sp_bank_code" name="bank_code"
+                 value="{{ supplier.bank_code if supplier else '' }}"
+                 placeholder="0800" maxlength="4"
+                 class="w-full border border-gray-300 rounded-md px-3 py-2 text-sm
+                        font-mono focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+        </div>
+      </div>
+
+      <div>
+        <label for="sp_bank_iban" class="block text-sm font-medium text-gray-700 mb-1">
+          IBAN <span class="text-gray-400 text-xs">(automaticky vypočten nebo zadejte ručně)</span>
+        </label>
+        <input type="text" id="sp_bank_iban" name="bank_iban"
+               value="{{ supplier.bank_iban if supplier and supplier.bank_iban else '' }}"
+               placeholder="CZ6508000000192000145399" maxlength="34"
+               class="w-full border border-gray-300 rounded-md px-3 py-2 text-sm
+                      font-mono focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+        <p class="text-xs text-gray-400 mt-1">
+          IBAN se automaticky vypočte po vyplnění čísla účtu a kódu banky.
+        </p>
+      </div>
+
+      <hr class="border-gray-100">
+
+      <div>
+        <label for="sp_trade_date" class="block text-sm font-medium text-gray-700 mb-1">
+          Datum zápisu do živnostenského rejstříku
+          <span class="text-gray-400 text-xs">(nepovinné)</span>
+        </label>
+        <input type="date" id="sp_trade_date" name="trade_register_date"
+               value="{{ supplier.trade_register_date.isoformat() if supplier and supplier.trade_register_date else '' }}"
+               class="border border-gray-300 rounded-md px-3 py-2 text-sm
+                      focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+        <p class="text-xs text-gray-400 mt-1">
+          Je-li vyplněno, faktura obsahuje text „Fyzická osoba zapsaná v živnostenském rejstříku od …"
+        </p>
+      </div>
+
+      <hr class="border-gray-100">
+
+      {# OSVČ activity type – drives the social-insurance calc on the Daně page #}
+      <div>
+        <label for="sp_activity" class="block text-sm font-medium text-gray-700 mb-1">
+          Typ činnosti OSVČ
+        </label>
+        {% set activity = supplier.osvc_activity_type if supplier and supplier.osvc_activity_type else 'main' %}
+        <select id="sp_activity" name="osvc_activity_type"
+                class="border border-gray-300 rounded-md px-3 py-2 text-sm bg-white
+                       focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+          <option value="main"      {% if activity == 'main' %}selected{% endif %}>Hlavní činnost</option>
+          <option value="secondary" {% if activity == 'secondary' %}selected{% endif %}>Vedlejší činnost</option>
+        </select>
+        <p class="text-xs text-gray-400 mt-1">
+          U <strong>vedlejší</strong> činnosti se sociální pojištění platí až od rozhodné částky;
+          u <strong>hlavní</strong> činnosti vždy. Ovlivňuje výpočet na stránce „Daně“.
+        </p>
+      </div>
+
+      <hr class="border-gray-100">
+
+      {# Invoice accent colour #}
+      <div>
+        <label class="block text-sm font-medium text-gray-700 mb-2">Barva faktury</label>
+        {% set current_color = ((supplier.brand_color if supplier and supplier.brand_color else default_brand_color)) | upper %}
+        <div class="flex flex-wrap gap-3">
+          {% for hex, label in brand_palette %}
+          <label class="cursor-pointer" title="{{ label }}">
+            <input type="radio" name="brand_color" value="{{ hex }}" class="sr-only peer"
+                   {% if hex | upper == current_color %}checked{% endif %}>
+            <span class="block w-8 h-8 rounded-full border border-gray-200
+                         peer-checked:ring-2 peer-checked:ring-offset-2 peer-checked:ring-gray-600"
+                  style="background-color: {{ hex }}"></span>
+          </label>
+          {% endfor %}
+        </div>
+        <p class="text-xs text-gray-400 mt-2">
+          Hlavní barva PDF faktury (záhlaví, tabulka, součet). Změna se projeví i na již vystavených fakturách.
+        </p>
+      </div>
+
+      <div class="flex justify-end pt-2">
+        <button type="submit"
+                class="px-6 py-2.5 rounded-md bg-blue-700 hover:bg-blue-800 text-white
+                       text-sm font-semibold transition-colors focus:outline-none
+                       focus:ring-2 focus:ring-offset-2 focus:ring-blue-600">
+          Uložit profil
+        </button>
+      </div>
+
+    </form>
+
+    <hr class="border-gray-100 my-6">
+
+    {# ── Logo upload ──────────────────────────────────────────────────────── #}
+    <div class="space-y-3 mb-6">
+      <p class="text-xs font-semibold text-gray-500 uppercase tracking-wide">Logo</p>
+
+      {% if supplier and supplier.logo_path %}
+      <div class="flex items-center gap-4">
+        <img src="/uploads/{{ supplier.user_id }}/{{ supplier.logo_path.split('/')[-1] }}"
+             alt="Logo" class="h-16 max-w-48 object-contain border border-gray-200 rounded p-1 bg-white">
+        <form method="post" action="/ui/ucet/smazat/logo">
+          <button type="submit"
+                  class="text-xs text-red-500 hover:text-red-700 font-medium transition-colors">
+            Odebrat logo
+          </button>
+        </form>
+      </div>
+      {% endif %}
+
+      <form method="post" action="/ui/ucet/nahrat/logo"
+            enctype="multipart/form-data" class="flex items-center gap-3">
+        <label class="flex-1">
+          <span class="block text-sm font-medium text-gray-700 mb-1">
+            {% if supplier and supplier.logo_path %}Nahrát nové logo{% else %}Nahrát logo{% endif %}
+            <span class="text-gray-400 text-xs">(JPG, PNG, WebP – max 5 MB)</span>
+          </span>
+          <input type="file" name="file" accept="image/*" required
+                 class="block w-full text-sm text-gray-500
+                        file:mr-3 file:py-1.5 file:px-4 file:rounded file:border-0
+                        file:text-sm file:font-medium file:bg-gray-100 file:text-gray-700
+                        hover:file:bg-gray-200 transition-colors">
+        </label>
+        <button type="submit"
+                class="mt-5 px-4 py-1.5 rounded-md bg-blue-700 hover:bg-blue-800 text-white
+                       text-sm font-semibold transition-colors whitespace-nowrap">
+          Nahrát
+        </button>
+      </form>
+    </div>
+
+    {# ── Stamp / signature upload ─────────────────────────────────────────── #}
+    <div class="space-y-3">
+      <p class="text-xs font-semibold text-gray-500 uppercase tracking-wide">Razítko a podpis</p>
+
+      {% if supplier and supplier.stamp_path %}
+      <div class="flex items-center gap-4">
+        <img src="/uploads/{{ supplier.user_id }}/{{ supplier.stamp_path.split('/')[-1] }}"
+             alt="Razítko" class="h-20 max-w-48 object-contain border border-gray-200 rounded p-1 bg-white">
+        <form method="post" action="/ui/ucet/smazat/stamp">
+          <button type="submit"
+                  class="text-xs text-red-500 hover:text-red-700 font-medium transition-colors">
+            Odebrat razítko
+          </button>
+        </form>
+      </div>
+      {% endif %}
+
+      <form method="post" action="/ui/ucet/nahrat/stamp"
+            enctype="multipart/form-data" class="flex items-center gap-3">
+        <label class="flex-1">
+          <span class="block text-sm font-medium text-gray-700 mb-1">
+            {% if supplier and supplier.stamp_path %}Nahrát nové razítko{% else %}Nahrát razítko{% endif %}
+            <span class="text-gray-400 text-xs">(JPG, PNG, WebP – doporučujeme průhledné PNG)</span>
+          </span>
+          <input type="file" name="file" accept="image/*" required
+                 class="block w-full text-sm text-gray-500
+                        file:mr-3 file:py-1.5 file:px-4 file:rounded file:border-0
+                        file:text-sm file:font-medium file:bg-gray-100 file:text-gray-700
+                        hover:file:bg-gray-200 transition-colors">
+        </label>
+        <button type="submit"
+                class="mt-5 px-4 py-1.5 rounded-md bg-blue-700 hover:bg-blue-800 text-white
+                       text-sm font-semibold transition-colors whitespace-nowrap">
+          Nahrát
+        </button>
+      </form>
+    </div>
+
+  </div>
+
+</div>
+
+<script>
+function czToIban(prefix, number, code) {
+  if (!number || !code) return '';
+  const bban = code.padStart(4, '0') + (prefix || '').padStart(6, '0') + number.padStart(10, '0');
+  const check = 98n - (BigInt(bban + '123500') % 97n);
+  return 'CZ' + String(check).padStart(2, '0') + bban;
+}
+
+function updateIban() {
+  const prefix = document.getElementById('sp_bank_prefix').value.trim();
+  const number = document.getElementById('sp_bank_number').value.trim();
+  const code   = document.getElementById('sp_bank_code').value.trim();
+  if (number && code && /^\d+$/.test(number) && /^\d{4}$/.test(code)) {
+    document.getElementById('sp_bank_iban').value = czToIban(prefix, number, code);
+  }
+}
+
+['sp_bank_prefix', 'sp_bank_number', 'sp_bank_code'].forEach(id => {
+  document.getElementById(id).addEventListener('blur', updateIban);
+});
+</script>
+
+{% endblock %}

@@ -1,0 +1,146 @@
+{% extends "base.html" %}
+{% block title %}{% if expense %}Upravit náklad{% else %}Nový náklad{% endif %}{% endblock %}
+
+{% block content %}
+
+{% set _back = (redirect_to or "/") if expense else "/" %}
+
+<div class="max-w-lg mx-auto">
+
+  <div class="flex items-center justify-between mb-6">
+    <h1 class="text-2xl font-bold text-gray-800">
+      {% if expense %}Upravit náklad{% else %}Nový náklad{% endif %}
+    </h1>
+    <a href="{{ _back }}" class="text-sm text-gray-500 hover:text-gray-700 transition-colors">&larr; Zpět</a>
+  </div>
+
+  <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+
+    {# Create → POST /ui/naklady/novy; edit → POST /ui/naklady/{id}/upravit #}
+    <form method="post"
+          action="{% if expense %}/ui/naklady/{{ expense.id }}/upravit{% else %}/ui/naklady/novy{% endif %}"
+          enctype="multipart/form-data" class="space-y-5">
+
+      {% if expense %}
+      <input type="hidden" name="redirect_to" value="{{ redirect_to or '/' }}">
+      {% endif %}
+
+      {% if flash_error %}
+      <div class="rounded-md bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-700">
+        {{ flash_error }}
+      </div>
+      {% endif %}
+
+      <div class="grid grid-cols-2 gap-4">
+
+        {# Date #}
+        <div>
+          <label for="date" class="block text-sm font-medium text-gray-700 mb-1">
+            Datum <span class="text-red-500">*</span>
+          </label>
+          <input type="date" id="date" name="date" required
+                 value="{{ today }}"
+                 class="w-full border border-gray-300 rounded-md px-3 py-2 text-sm
+                        focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+        </div>
+
+        {# Category #}
+        <div>
+          <label for="category" class="block text-sm font-medium text-gray-700 mb-1">
+            Kategorie <span class="text-red-500">*</span>
+          </label>
+          <input type="text" id="category" name="category" required
+                 list="category-list"
+                 value="{{ (expense.category if expense else '') or '' }}"
+                 placeholder="Software, Cestovné…"
+                 class="w-full border border-gray-300 rounded-md px-3 py-2 text-sm
+                        focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+          {# Datalist provides autocomplete suggestions without locking the user in #}
+          <datalist id="category-list">
+            <option value="Software">
+            <option value="Hardware">
+            <option value="Cestovné">
+            <option value="Kancelář">
+            <option value="Marketing">
+            <option value="Vzdělávání">
+            <option value="Telefon / Internet">
+            <option value="Účetnictví / Právní">
+            <option value="Ostatní">
+          </datalist>
+        </div>
+
+      </div>
+
+      {# Amount — currency is locked to CZK (totals/CSV assume one currency). #}
+      <div>
+        <label for="amount" class="block text-sm font-medium text-gray-700 mb-1">
+          Částka <span class="text-red-500">*</span>
+        </label>
+        <input type="number" id="amount" name="amount" required
+               min="0.01" step="0.01" placeholder="0.00"
+               value="{{ ('%.2f'|format(expense.amount)) if expense else '' }}"
+               class="w-full border border-gray-300 rounded-md px-3 py-2 text-sm
+                      text-right focus:outline-none focus:ring-2 focus:ring-blue-500
+                      focus:border-blue-500">
+        <input type="hidden" id="currency" name="currency" value="CZK">
+      </div>
+
+      {# Description #}
+      <div>
+        <label for="description" class="block text-sm font-medium text-gray-700 mb-1">
+          Popis <span class="text-red-500">*</span>
+        </label>
+        <textarea id="description" name="description" rows="3" required
+                  placeholder="Co bylo zakoupeno / k čemu slouží…"
+                  class="w-full border border-gray-300 rounded-md px-3 py-2 text-sm
+                         focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500
+                         resize-none">{{ (expense.description if expense else '') or '' }}</textarea>
+      </div>
+
+      {# Scan attachment #}
+      <div>
+        {% if expense and expense.attachment_path %}
+          {% set _rel = expense.attachment_path.split('/uploads/')[-1] %}
+          <label for="scan" class="block text-sm font-medium text-gray-700 mb-1">
+            Nahradit doklad <span class="text-gray-400 text-xs">(nepovinné — JPG, PNG, PDF)</span>
+          </label>
+          <p class="mb-2 text-xs text-gray-500">
+            Aktuální doklad:
+            <a href="/uploads/{{ _rel }}" target="_blank"
+               class="text-blue-600 hover:text-blue-800 font-medium transition-colors">zobrazit</a>
+            — nahráním nového souboru jej nahradíte.
+          </p>
+        {% else %}
+          <label for="scan" class="block text-sm font-medium text-gray-700 mb-1">
+            Sken / doklad <span class="text-gray-400 text-xs">(nepovinné — JPG, PNG, PDF)</span>
+          </label>
+        {% endif %}
+        <input type="file" id="scan" name="scan"
+               accept="image/jpeg,image/png,application/pdf"
+               class="w-full text-sm text-gray-700 border border-gray-300 rounded-md px-3 py-2
+                      file:mr-3 file:py-1 file:px-3 file:rounded file:border-0
+                      file:text-sm file:font-medium file:bg-blue-50 file:text-blue-700
+                      hover:file:bg-blue-100 focus:outline-none">
+      </div>
+
+      {# Actions #}
+      <div class="flex justify-end gap-3 pt-2">
+        <a href="{{ _back }}"
+           class="px-5 py-2.5 rounded-md border border-gray-300 text-sm font-medium
+                  text-gray-700 hover:bg-gray-50 transition-colors">
+          Zrušit
+        </a>
+        <button type="submit"
+                class="px-6 py-2.5 rounded-md bg-blue-700 hover:bg-blue-800 text-white
+                       text-sm font-semibold transition-colors focus:outline-none
+                       focus:ring-2 focus:ring-offset-2 focus:ring-blue-600">
+          {% if expense %}Uložit změny{% else %}Uložit náklad{% endif %}
+        </button>
+      </div>
+
+    </form>
+  </div>
+
+</div>
+
+{% endblock %}

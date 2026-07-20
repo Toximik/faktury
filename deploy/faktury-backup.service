@@ -1,0 +1,35 @@
+[Unit]
+Description=Fakturace – backup database + uploaded files
+Documentation=file:/weby/faktury.tmcm.cz/app/deploy/backup.sh
+# Triggered by faktury-backup.timer; can also be run on demand with
+#   sudo systemctl start faktury-backup.service
+
+[Service]
+# ── Identity ──────────────────────────────────────────────────────────────────
+# Same unprivileged user as the app, so the snapshot reads the live DB + uploads.
+Type=oneshot
+User=faktury
+Group=faktury
+
+# ── What to run ─────────────────────────────────────────────────────────────────
+ExecStart=/bin/bash /weby/faktury.tmcm.cz/app/deploy/backup.sh
+
+# ── Be a good citizen ───────────────────────────────────────────────────────────
+# Run at low CPU/IO priority so a backup never starves the web app.
+Nice=10
+IOSchedulingClass=idle
+
+# ── Security hardening ──────────────────────────────────────────────────────────
+# Mirror the app service: confine what this process can touch. It only needs to
+# read the app dir (DB + uploads) and write the archive into the backup dir.
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ReadWritePaths=/weby/faktury.tmcm.cz/app /data3/BACKUPS/faktury_app
+ProtectHome=true
+ProtectKernelTunables=true
+ProtectControlGroups=true
+RestrictNamespaces=true
+LockPersonality=true
+
+# No [Install] section: this unit is started by the timer, not enabled directly.

@@ -1,0 +1,108 @@
+{% extends "base.html" %}
+{% from "_macros.html" import invoice_table, expense_table %}
+{% block title %}Přehled{% endblock %}
+
+{% block content %}
+
+{# ══════════════════════════════════════════════════════════════
+   PAGE HEADER
+   ══════════════════════════════════════════════════════════════ #}
+<div class="flex items-center justify-between mb-6">
+  <h1 class="text-2xl font-bold text-gray-800">Přehled {{ current_year }}</h1>
+  <a href="/faktury/nova"
+     class="bg-blue-700 hover:bg-blue-800 text-white text-sm font-semibold
+            px-4 py-2 rounded-md transition-colors">
+    + Nová faktura
+  </a>
+</div>
+
+{# ══════════════════════════════════════════════════════════════
+   SUMMARY CARDS
+   ══════════════════════════════════════════════════════════════ #}
+<div class="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-8">
+
+  {# Total invoiced (paid invoices only) #}
+  <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-5">
+    <p class="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">
+      Příjmy (uhrazeno)
+    </p>
+    <p class="text-2xl font-bold text-blue-700">
+      {{ stats.total_paid | money }}
+    </p>
+    <p class="text-xs text-gray-400 mt-1">{{ stats.paid_count }} faktury uhrazeny</p>
+  </div>
+
+  {# Total expenses #}
+  <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-5">
+    <p class="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">
+      Výdaje celkem
+    </p>
+    <p class="text-2xl font-bold text-red-600">
+      {{ stats.total_expenses | money }}
+    </p>
+    <p class="text-xs text-gray-400 mt-1">{{ stats.expense_count }} položek</p>
+  </div>
+
+  {# Net (paid - expenses) #}
+  <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-5">
+    <p class="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">
+      Zisk (příjmy – výdaje)
+    </p>
+    {% set net = stats.total_paid - stats.total_expenses %}
+    <p class="text-2xl font-bold {% if net >= 0 %}text-green-600{% else %}text-red-600{% endif %}">
+      {{ net | money }}
+    </p>
+    <p class="text-xs text-gray-400 mt-1">&nbsp;</p>
+  </div>
+
+</div>
+
+{# ══════════════════════════════════════════════════════════════
+   INVOICE TABLE
+   ══════════════════════════════════════════════════════════════ #}
+<div class="bg-white rounded-lg shadow-sm border border-gray-200 mb-8">
+  <div class="flex items-center justify-between px-5 py-4 border-b border-gray-100">
+    <h2 class="text-base font-semibold text-gray-700">Faktury {{ current_year }}</h2>
+    <span class="text-xs text-gray-400">{{ invoices|length }} celkem</span>
+  </div>
+
+  {% if invoices %}
+  {# No overflow wrapper here: the 3-dot dropdown must be able to overflow the card. #}
+  <div>
+    {{ invoice_table(invoices, today_date, "/") }}
+  </div>
+
+  {% else %}
+  <div class="px-5 py-10 text-center text-gray-400 text-sm">
+    Zatím žádné faktury. <a href="/faktury/nova" class="text-blue-600 hover:underline">Vytvořte první</a>.
+  </div>
+  {% endif %}
+
+</div>
+
+{# ══════════════════════════════════════════════════════════════
+   RECENT EXPENSES
+   ══════════════════════════════════════════════════════════════ #}
+<div class="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
+  <div class="flex items-center justify-between px-5 py-4 border-b border-gray-100">
+    <h2 class="text-base font-semibold text-gray-700">Náklady {{ current_year }}</h2>
+    <a href="/naklady/novy"
+       class="text-sm text-blue-700 hover:text-blue-900 font-medium transition-colors">
+      + Přidat náklad
+    </a>
+  </div>
+
+  {% if expenses %}
+  <div class="overflow-x-auto">
+    {{ expense_table(expenses, "/") }}
+  </div>
+
+  {% else %}
+  <div class="px-5 py-10 text-center text-gray-400 text-sm">
+    Žádné náklady. <a href="/naklady/novy" class="text-blue-600 hover:underline">Přidejte první</a>.
+  </div>
+  {% endif %}
+
+</div>
+
+{% endblock %}

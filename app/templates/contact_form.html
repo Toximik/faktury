@@ -1,0 +1,228 @@
+{% extends "base.html" %}
+{% block title %}{% if contact %}Upravit kontakt{% else %}Nový kontakt{% endif %}{% endblock %}
+
+{% block content %}
+
+<div class="max-w-lg mx-auto">
+
+  <div class="flex items-center justify-between mb-6">
+    <h1 class="text-2xl font-bold text-gray-800">
+      {% if contact %}Upravit kontakt{% else %}Nový kontakt{% endif %}
+    </h1>
+    <a href="/kontakty" class="text-sm text-gray-500 hover:text-gray-700 transition-colors">&larr; Zpět</a>
+  </div>
+
+  <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+
+    <form method="post"
+          action="{% if contact %}/ui/kontakty/{{ contact.id }}/upravit{% else %}/ui/kontakty/novy{% endif %}"
+          class="space-y-5">
+
+      {% if form_error %}
+      <div class="rounded-md bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-700">
+        {{ form_error }}
+      </div>
+      {% endif %}
+
+      {# Name #}
+      <div>
+        <label for="name" class="block text-sm font-medium text-gray-700 mb-1">
+          Název / Jméno <span class="text-red-500">*</span>
+        </label>
+        <input type="text" id="name" name="name" required
+               value="{{ (form.name if form else (contact and contact.name)) or '' }}"
+               placeholder="ACME s.r.o."
+               class="w-full border border-gray-300 rounded-md px-3 py-2 text-sm
+                      focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+      </div>
+
+      {# Address #}
+      <div>
+        <label for="address" class="block text-sm font-medium text-gray-700 mb-1">
+          Adresa <span class="text-red-500">*</span>
+        </label>
+        <textarea id="address" name="address" required rows="3"
+                  placeholder="Ulice 1&#10;110 00 Praha 1&#10;Česká republika"
+                  class="w-full border border-gray-300 rounded-md px-3 py-2 text-sm
+                         focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500
+                         resize-none">{{ (form.address if form else (contact and contact.address)) or '' }}</textarea>
+      </div>
+
+      {# IČO + DIČ #}
+      <div class="grid grid-cols-2 gap-4">
+        <div>
+          <label for="ic" class="block text-sm font-medium text-gray-700 mb-1">
+            IČO <span class="text-red-500">*</span>
+          </label>
+          <div class="flex gap-2">
+            <input type="text" id="ic" name="ic" required
+                   value="{{ (form.ic if form else (contact and contact.ic)) or '' }}"
+                   placeholder="12345678"
+                   maxlength="20"
+                   class="w-full border border-gray-300 rounded-md px-3 py-2 text-sm
+                          font-mono focus:outline-none focus:ring-2 focus:ring-blue-500
+                          focus:border-blue-500">
+            <button type="button" id="ares-btn"
+                    class="shrink-0 px-3 py-2 text-sm rounded-md border border-blue-300
+                           text-blue-700 hover:bg-blue-50 transition-colors">
+              ARES
+            </button>
+          </div>
+          <p id="ares-msg" class="mt-1 text-xs hidden"></p>
+        </div>
+        <div>
+          <label for="dic" class="block text-sm font-medium text-gray-700 mb-1">
+            DIČ <span class="text-gray-400 text-xs">(nepovinné)</span>
+          </label>
+          <input type="text" id="dic" name="dic"
+                 value="{{ (form.dic if form else (contact and contact.dic)) or '' }}"
+                 placeholder="CZ12345678"
+                 maxlength="20"
+                 class="w-full border border-gray-300 rounded-md px-3 py-2 text-sm
+                        font-mono focus:outline-none focus:ring-2 focus:ring-blue-500
+                        focus:border-blue-500">
+        </div>
+      </div>
+
+      {# Splatnost (payment term in days) #}
+      <div>
+        <label for="payment_due_days" class="block text-sm font-medium text-gray-700 mb-1">
+          Splatnost ve dnech <span class="text-gray-400 text-xs">(nepovinné)</span>
+        </label>
+        <input type="number" id="payment_due_days" name="payment_due_days" min="1" step="1"
+               value="{{ (form.payment_due_days if form else (contact and contact.payment_due_days)) or '' }}"
+               placeholder="Výchozí: {{ default_due_days }}"
+               class="w-40 border border-gray-300 rounded-md px-3 py-2 text-sm
+                      focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+        <p class="mt-1 text-xs text-gray-400">
+          Počet dní mezi vystavením a splatností faktury. Nevyplněno → {{ default_due_days }} dní.
+        </p>
+      </div>
+
+      {# Bank account – Czech local format #}
+      <div>
+        <p class="block text-sm font-medium text-gray-700 mb-2">
+          Bankovní účet <span class="text-gray-400 text-xs">(nepovinné)</span>
+        </p>
+        <div class="grid grid-cols-3 gap-3 mb-3">
+          <div>
+            <label for="bank_prefix" class="block text-xs text-gray-500 mb-1">Předčíslí</label>
+            <input type="text" id="bank_prefix" name="bank_prefix"
+                   value="{{ (form.bank_prefix if form else (contact and contact.bank_prefix)) or '' }}"
+                   placeholder="19" maxlength="6"
+                   class="w-full border border-gray-300 rounded-md px-3 py-2 text-sm
+                          font-mono focus:outline-none focus:ring-2 focus:ring-blue-500
+                          focus:border-blue-500">
+          </div>
+          <div>
+            <label for="bank_number" class="block text-xs text-gray-500 mb-1">Číslo účtu</label>
+            <input type="text" id="bank_number" name="bank_number"
+                   value="{{ (form.bank_number if form else (contact and contact.bank_number)) or '' }}"
+                   placeholder="2000145399" maxlength="10"
+                   class="w-full border border-gray-300 rounded-md px-3 py-2 text-sm
+                          font-mono focus:outline-none focus:ring-2 focus:ring-blue-500
+                          focus:border-blue-500">
+          </div>
+          <div>
+            <label for="bank_code" class="block text-xs text-gray-500 mb-1">Kód banky</label>
+            <input type="text" id="bank_code" name="bank_code"
+                   value="{{ (form.bank_code if form else (contact and contact.bank_code)) or '' }}"
+                   placeholder="0800" maxlength="4"
+                   class="w-full border border-gray-300 rounded-md px-3 py-2 text-sm
+                          font-mono focus:outline-none focus:ring-2 focus:ring-blue-500
+                          focus:border-blue-500">
+          </div>
+        </div>
+        <div>
+          <label for="bank_iban" class="block text-xs text-gray-500 mb-1">
+            IBAN <span class="text-gray-400">(automaticky nebo ručně)</span>
+          </label>
+          <input type="text" id="bank_iban" name="bank_iban"
+                 value="{{ (form.bank_iban if form else (contact and contact.bank_iban)) or '' }}"
+                 placeholder="CZ6508000000192000145399" maxlength="34"
+                 class="w-full border border-gray-300 rounded-md px-3 py-2 text-sm
+                        font-mono focus:outline-none focus:ring-2 focus:ring-blue-500
+                        focus:border-blue-500">
+        </div>
+      </div>
+
+      {# E-mail #}
+      <div>
+        <label for="email" class="block text-sm font-medium text-gray-700 mb-1">
+          E-mail <span class="text-gray-400 text-xs">(nepovinné)</span>
+        </label>
+        <input type="email" id="email" name="email"
+               value="{{ (form.email if form else (contact and contact.email)) or '' }}"
+               placeholder="info@firma.cz"
+               class="w-full border border-gray-300 rounded-md px-3 py-2 text-sm
+                      focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+      </div>
+
+      {# Actions #}
+      <div class="flex justify-end gap-3 pt-2">
+        <a href="/kontakty"
+           class="px-5 py-2.5 rounded-md border border-gray-300 text-sm font-medium
+                  text-gray-700 hover:bg-gray-50 transition-colors">
+          Zrušit
+        </a>
+        <button type="submit"
+                class="px-6 py-2.5 rounded-md bg-blue-700 hover:bg-blue-800 text-white
+                       text-sm font-semibold transition-colors focus:outline-none
+                       focus:ring-2 focus:ring-offset-2 focus:ring-blue-600">
+          {% if contact %}Uložit změny{% else %}Vytvořit kontakt{% endif %}
+        </button>
+      </div>
+
+    </form>
+  </div>
+
+</div>
+
+<script>
+function czToIban(prefix, number, code) {
+  if (!number || !code) return '';
+  const bban = code.padStart(4, '0') + (prefix || '').padStart(6, '0') + number.padStart(10, '0');
+  const check = 98n - (BigInt(bban + '123500') % 97n);
+  return 'CZ' + String(check).padStart(2, '0') + bban;
+}
+function updateIban() {
+  const prefix = document.getElementById('bank_prefix').value.trim();
+  const number = document.getElementById('bank_number').value.trim();
+  const code   = document.getElementById('bank_code').value.trim();
+  if (number && code && /^\d+$/.test(number) && /^\d{4}$/.test(code)) {
+    document.getElementById('bank_iban').value = czToIban(prefix, number, code);
+  }
+}
+['bank_prefix', 'bank_number', 'bank_code'].forEach(id => {
+  document.getElementById(id).addEventListener('blur', updateIban);
+});
+
+// ── ARES autofill (name / address / DIČ from the Czech business register) ──
+const aresBtn = document.getElementById('ares-btn');
+const aresMsg = document.getElementById('ares-msg');
+function showAresMsg(text, ok) {
+  aresMsg.textContent = text;
+  aresMsg.className = 'mt-1 text-xs ' + (ok ? 'text-green-600' : 'text-red-600');
+}
+aresBtn.addEventListener('click', async () => {
+  const ico = document.getElementById('ic').value.trim();
+  if (!/^\d{8}$/.test(ico)) { showAresMsg('Zadejte 8místné IČO.', false); return; }
+  aresBtn.disabled = true;
+  showAresMsg('Načítám z ARES…', true);
+  try {
+    const res = await fetch(`/api/contacts/ares/${ico}`, { headers: { 'Accept': 'application/json' } });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) { showAresMsg(data.detail || 'Načtení selhalo.', false); return; }
+    if (data.name)    document.getElementById('name').value = data.name;
+    if (data.address) document.getElementById('address').value = data.address;
+    document.getElementById('dic').value = data.dic || '';
+    showAresMsg('Údaje načteny z ARES.', true);
+  } catch (e) {
+    showAresMsg('Síťová chyba při dotazu na ARES.', false);
+  } finally {
+    aresBtn.disabled = false;
+  }
+});
+</script>
+
+{% endblock %}

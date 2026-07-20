@@ -1,0 +1,622 @@
+<!DOCTYPE html>
+<html lang="cs">
+<head>
+  <meta charset="UTF-8">
+  <title>{{ 'Dobropis' if is_credit else 'Faktura' }} č. {{ invoice.variable_symbol }}</title>
+  <style>
+    /* Brand accent colour (user-selectable, read live at render time). */
+    :root {
+      --brand: {{ brand_color }};
+    }
+
+    /* ═══════════════════════════════════════════════════════════════
+       PAGE SETUP  –  A4, portrait, standard margins
+       ═══════════════════════════════════════════════════════════════ */
+    @page {
+      size: A4 portrait;
+      margin: 18mm 20mm 18mm 20mm;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+      font-size: 9.5pt;
+      color: #374151;
+      line-height: 1.65;
+      background: #ffffff;
+    }
+
+    /* ═══════════════════════════════════════════════════════════════
+       HEADER  –  Company name left, Invoice title right
+       ═══════════════════════════════════════════════════════════════ */
+    .invoice-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-end;
+      border-bottom: 1pt solid var(--brand);
+      padding-bottom: 5mm;
+      margin-bottom: 9mm;
+    }
+
+    .header-left .company-name {
+      font-size: 16pt;
+      font-weight: 700;
+      color: var(--brand);
+      letter-spacing: -0.3px;
+    }
+
+    .header-left .company-logo {
+      max-height: 16mm;
+      max-width: 55mm;
+      display: block;
+      margin-bottom: 2mm;
+      object-fit: contain;
+    }
+
+    .header-right {
+      text-align: right;
+    }
+
+    .header-right .invoice-title {
+      font-size: 21pt;
+      font-weight: 600;
+      color: var(--brand);
+      letter-spacing: 0.5px;
+      text-transform: uppercase;
+      white-space: nowrap;
+    }
+
+    /* Dobropis back-reference, shown under the document title. */
+    .header-right .credit-reference {
+      font-size: 9.5pt;
+      color: #6b7280;
+      margin-top: 1.5mm;
+      white-space: nowrap;
+    }
+
+    /* ═══════════════════════════════════════════════════════════════
+       PAGE FOOTER  –  trade register notice
+       ═══════════════════════════════════════════════════════════════ */
+    .page-footer {
+      position: fixed;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      text-align: center;
+      font-size: 7.5pt;
+      color: #9ca3af;
+      font-style: italic;
+      padding-bottom: 4mm;
+    }
+
+    /* ═══════════════════════════════════════════════════════════════
+       PAID WATERMARK  –  diagonal, light, decorative only
+       ═══════════════════════════════════════════════════════════════ */
+    .paid-watermark {
+      position: fixed;
+      top: 55mm;
+      right: 15mm;
+      font-size: 38pt;
+      font-weight: 900;
+      color: #16a34a;
+      opacity: 0.12;
+      transform: rotate(-20deg);
+      text-transform: uppercase;
+      letter-spacing: 4px;
+      border: 5pt solid #16a34a;
+      padding: 2mm 5mm;
+      pointer-events: none;
+    }
+
+    /* ═══════════════════════════════════════════════════════════════
+       PARTIES  –  Supplier (left) & Client (right)
+       ═══════════════════════════════════════════════════════════════ */
+    .parties {
+      display: flex;
+      gap: 10mm;
+      margin-bottom: 8mm;
+    }
+
+    .party {
+      flex: 1;
+    }
+
+    .party-label {
+      font-size: 6.5pt;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.8px;
+      color: #9ca3af;
+      margin-bottom: 2.5mm;
+      border-bottom: 1pt solid #f3f4f6;
+      padding-bottom: 1.5mm;
+    }
+
+    .party-name {
+      font-size: 11pt;
+      font-weight: 700;
+      color: #111827;
+      margin-bottom: 1.5mm;
+    }
+
+    .party-address {
+      font-size: 9pt;
+      color: #374151;
+      line-height: 1.5;
+    }
+
+    .party-reg {
+      margin-top: 2.5mm;
+      font-size: 8.5pt;
+      color: #6b7280;
+      line-height: 1.6;
+    }
+
+    /* ═══════════════════════════════════════════════════════════════
+       INVOICE META  –  Dates, VS, payment method in one bar
+       ═══════════════════════════════════════════════════════════════ */
+    .invoice-meta {
+      display: flex;
+      gap: 0;
+      margin-bottom: 8mm;
+    }
+
+    .meta-cell {
+      flex: 1;
+      padding: 1mm 5mm;
+      border-left: 0.75pt solid #edeef2;
+    }
+
+    .meta-cell:first-child {
+      padding-left: 0;
+      border-left: none;
+    }
+
+    .meta-label {
+      font-size: 6.5pt;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      color: #9ca3af;
+      margin-bottom: 1mm;
+    }
+
+    .meta-value {
+      font-size: 9.5pt;
+      font-weight: 600;
+      color: #111827;
+    }
+
+    .meta-value.highlight {
+      font-size: 11pt;
+      color: var(--brand);
+    }
+
+    .meta-value.paid-date {
+      color: #16a34a;
+    }
+
+    /* ═══════════════════════════════════════════════════════════════
+       LINE ITEMS TABLE
+       ═══════════════════════════════════════════════════════════════ */
+    .items-table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-bottom: 10mm;
+      font-size: 9pt;
+    }
+
+    .items-table thead th {
+      padding: 2.5mm 3.5mm;
+      text-align: left;
+      font-size: 7.5pt;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.4px;
+      white-space: nowrap;
+      color: #6b7280;
+      border-bottom: 1.5pt solid var(--brand);
+    }
+
+    .items-table thead th.r { text-align: right; }
+    .items-table tbody td.r { text-align: right; }
+
+    .items-table tbody tr {
+      border-bottom: 0.75pt solid #edeef2;
+    }
+
+    .items-table tbody td {
+      padding: 3.2mm 3.5mm;
+      vertical-align: top;
+    }
+
+    .items-table tbody td.description {
+      font-size: 9.5pt;
+    }
+
+    /* ═══════════════════════════════════════════════════════════════
+       TOTALS BLOCK  –  right-aligned summary
+       ═══════════════════════════════════════════════════════════════ */
+    .totals-wrapper {
+      display: flex;
+      justify-content: flex-end;
+      margin-bottom: 9mm;
+    }
+
+    .totals-box {
+      width: 72mm;
+    }
+
+    .totals-row {
+      display: flex;
+      justify-content: space-between;
+      padding: 2.4mm 0;
+      font-size: 9pt;
+      border-bottom: 0.75pt solid #edeef2;
+      color: #374151;
+    }
+
+    .totals-row:last-child {
+      border-bottom: none;
+    }
+
+    /* Grand total: a colour line above it, no filled band */
+    .totals-row.grand-total {
+      border-top: 1.5pt solid var(--brand);
+      padding-top: 3mm;
+      font-size: 12pt;
+      font-weight: 700;
+      color: #111827;
+    }
+
+    .totals-row .label { font-weight: 400; }
+    .totals-row .amount { font-weight: 600; }
+    .totals-row.grand-total .label { font-weight: 700; }
+    .totals-row.grand-total .amount { font-weight: 700; color: var(--brand); }
+
+    /* ═══════════════════════════════════════════════════════════════
+       BOTTOM SECTION  –  Payment info / QR / Stamp
+       ═══════════════════════════════════════════════════════════════ */
+    .bottom-section {
+      display: flex;
+      gap: 6mm;
+      align-items: flex-start;
+      border-top: 0.75pt solid #edeef2;
+      padding-top: 6mm;
+      page-break-inside: avoid;
+    }
+
+    /* Payment details + QR grouped together on the left, QR right beside the data */
+    .payment-group {
+      flex: 1;
+      display: flex;
+      align-items: center;
+      justify-content: flex-start;
+      gap: 6mm;
+    }
+
+    /* Payment details – natural width so the QR sits immediately to its left edge */
+    .payment-info {
+      flex: 0 0 auto;
+    }
+
+    .section-label {
+      font-size: 6.5pt;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.8px;
+      color: #9ca3af;
+      margin-bottom: 3mm;
+    }
+
+    .payment-row {
+      font-size: 9.5pt;
+      color: #374151;
+      margin-bottom: 1.5mm;
+    }
+
+    .payment-row .pl {
+      font-size: 8pt;
+      color: #9ca3af;
+      display: block;
+    }
+
+    .payment-row strong {
+      color: #111827;
+      font-weight: 600;
+    }
+
+    .iban-value {
+      font-size: 10pt;
+      font-weight: 700;
+      color: var(--brand);
+      letter-spacing: 0.3px;
+    }
+
+    /* QR Code */
+    .qr-block {
+      width: 36mm;
+      text-align: center;
+      flex-shrink: 0;
+    }
+
+    .qr-block img {
+      width: 34mm;
+      height: 34mm;
+      display: block;
+      margin: 0 auto;
+    }
+
+    /* Stamp / Signature */
+    .stamp-block {
+      width: 44mm;
+      flex-shrink: 0;
+      text-align: center;
+    }
+
+    .stamp-block img {
+      max-width: 42mm;
+      max-height: 32mm;
+      display: block;
+      margin: 0 auto;
+    }
+
+    .stamp-placeholder {
+      width: 42mm;
+      height: 30mm;
+      border: 0.75pt dashed #dcdde3;
+      border-radius: 4pt;
+      margin: 0 auto;
+    }
+
+    .stamp-caption {
+      font-size: 6.5pt;
+      color: #9ca3af;
+      margin-top: 1.5mm;
+      border-top: 0.75pt solid #edeef2;
+      padding-top: 1mm;
+    }
+
+    /* ═══════════════════════════════════════════════════════════════
+       NOTES
+       ═══════════════════════════════════════════════════════════════ */
+    .notes-block {
+      margin-top: 5mm;
+      padding: 3mm 4mm;
+      background: #fffbeb;
+      border-left: 3pt solid #f59e0b;
+      border-radius: 0 3pt 3pt 0;
+      font-size: 8.5pt;
+      color: #374151;
+    }
+
+    /* ═══════════════════════════════════════════════════════════════
+       NON-VAT PAYER NOTICE
+       ═══════════════════════════════════════════════════════════════ */
+    .non-vat-notice {
+      font-size: 8pt;
+      color: #6b7280;
+      font-style: italic;
+      margin-bottom: 4mm;
+      text-align: right;
+    }
+
+    /* ═══════════════════════════════════════════════════════════════
+       UTILITIES
+       ═══════════════════════════════════════════════════════════════ */
+    .text-right { text-align: right; }
+    .text-muted { color: #6b7280; }
+    .fw-bold    { font-weight: 700; }
+    .no-wrap    { white-space: nowrap; }
+  </style>
+</head>
+
+<body>
+
+  {# ── PAID watermark ───────────────────────────────────────────── #}
+  {% if invoice.is_paid %}
+  <div class="paid-watermark">{{ 'Vráceno' if is_credit else 'Uhrazeno' }}</div>
+  {% endif %}
+
+  {# ══════════════════════════════════════════════════════════════
+     HEADER
+     ══════════════════════════════════════════════════════════════ #}
+  <div class="invoice-header">
+    <div class="header-left">
+      {% if logo_uri %}
+      <img src="{{ logo_uri }}" class="company-logo" alt="">
+      {% endif %}
+    </div>
+    <div class="header-right">
+      {% if is_credit %}
+      <span class="invoice-title">Dobropis&nbsp;č.&nbsp;{{ invoice.variable_symbol }}</span>
+      <div class="credit-reference">Opravný doklad k&nbsp;faktuře&nbsp;č.&nbsp;{{ related_vs }}</div>
+      {% else %}
+      <span class="invoice-title">Faktura&nbsp;č.&nbsp;{{ invoice.variable_symbol }}</span>
+      {% endif %}
+    </div>
+  </div>
+
+  {# ══════════════════════════════════════════════════════════════
+     PARTIES  –  Supplier & Client
+     ══════════════════════════════════════════════════════════════ #}
+  <div class="parties">
+
+    {# Supplier (left) #}
+    <div class="party">
+      <div class="party-label">Dodavatel&nbsp;/ Plátce</div>
+      <div class="party-name">{{ supplier.name }}</div>
+      <div class="party-address">{{ supplier.address | nl2br }}</div>
+      <div class="party-reg">
+        IČO:&nbsp;<strong>{{ supplier.ic }}</strong>
+        {% if supplier.dic %}
+          <br>DIČ:&nbsp;<strong>{{ supplier.dic }}</strong>
+        {% else %}
+          <br><em>Neplátce DPH</em>
+        {% endif %}
+      </div>
+    </div>
+
+    {# Client (right) #}
+    <div class="party">
+      <div class="party-label">Odběratel</div>
+      <div class="party-name">{{ contact.name }}</div>
+      <div class="party-address">{{ contact.address | nl2br }}</div>
+      <div class="party-reg">
+        IČO:&nbsp;<strong>{{ contact.ic }}</strong>
+        {% if contact.dic %}
+          &nbsp;&nbsp;DIČ:&nbsp;<strong>{{ contact.dic }}</strong>
+        {% endif %}
+        {% if contact.email %}
+          <br>E-mail:&nbsp;{{ contact.email }}
+        {% endif %}
+      </div>
+    </div>
+
+  </div>{# /parties #}
+
+  {# ══════════════════════════════════════════════════════════════
+     INVOICE META BAR  –  Dates, VS, Payment method
+     ══════════════════════════════════════════════════════════════ #}
+  <div class="invoice-meta">
+    <div class="meta-cell">
+      <div class="meta-label">Datum vystavení</div>
+      <div class="meta-value">{{ invoice.date_issued | date_cz }}</div>
+    </div>
+    <div class="meta-cell">
+      <div class="meta-label">Datum splatnosti</div>
+      <div class="meta-value">{{ invoice.date_due | date_cz }}</div>
+    </div>
+    <div class="meta-cell">
+      <div class="meta-label">Variabilní symbol</div>
+      <div class="meta-value highlight">{{ invoice.variable_symbol }}</div>
+    </div>
+    <div class="meta-cell">
+      <div class="meta-label">Způsob úhrady</div>
+      <div class="meta-value">{{ 'Hotově' if invoice.payment_method == 'cash' else 'Převodem' }}</div>
+    </div>
+    {% if invoice.is_paid and invoice.date_paid %}
+    <div class="meta-cell">
+      <div class="meta-label">{{ 'Datum vrácení' if is_credit else 'Datum úhrady' }}</div>
+      <div class="meta-value paid-date">{{ invoice.date_paid | date_cz }}</div>
+    </div>
+    {% endif %}
+  </div>
+
+  {# ══════════════════════════════════════════════════════════════
+     LINE ITEMS TABLE
+     ══════════════════════════════════════════════════════════════ #}
+  <table class="items-table">
+    <thead>
+      <tr>
+        <th style="width:4%">#</th>
+        <th>Popis&nbsp;/ Položka</th>
+        <th class="r" style="width:10%">Množství</th>
+        <th style="width:7%">Jedn.</th>
+        <th class="r" style="width:20%">Jedn.&nbsp;cena</th>
+        <th class="r" style="width:20%">Celkem</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for item in items %}
+      <tr>
+        <td class="text-muted">{{ loop.index }}</td>
+        <td class="description">{{ item.description }}</td>
+        <td class="r no-wrap">{{ item.quantity }}</td>
+        <td class="text-muted">{{ item.unit | default('ks') }}</td>
+        <td class="r no-wrap">{{ item.unit_price | czk }}</td>
+        <td class="r no-wrap fw-bold">{{ item.subtotal | czk }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+
+  {# ══════════════════════════════════════════════════════════════
+     NON-VAT NOTICE (shown only when supplier is not a VAT payer)
+     ══════════════════════════════════════════════════════════════ #}
+  {# ══════════════════════════════════════════════════════════════
+     TOTALS
+     ══════════════════════════════════════════════════════════════ #}
+  <div class="totals-wrapper">
+    <div class="totals-box">
+      <div class="totals-row grand-total">
+        <span class="label">{% if is_credit %}K&nbsp;vrácení:{% else %}K&nbsp;úhradě:{% endif %}</span>
+        <span class="amount no-wrap">{{ total_incl | czk }}</span>
+      </div>
+    </div>
+  </div>
+
+  {# ══════════════════════════════════════════════════════════════
+     BOTTOM  –  Payment details / QR Code / Stamp
+     ══════════════════════════════════════════════════════════════ #}
+  <div class="bottom-section">
+
+    {# Payment details + QR — only for bank transfer. Cash invoices need no
+       account / VS / QR, so the whole block is omitted. A dobropis omits it
+       too: the money flows supplier → customer, so the supplier's own account
+       and a payment QR would be misleading. #}
+    {% if invoice.payment_method != 'cash' and not is_credit %}
+    <div class="payment-group">
+      <div class="payment-info">
+        <div class="section-label">Platební údaje</div>
+
+        <div class="payment-row">
+          <span class="pl">Číslo účtu</span>
+          <strong>{{ supplier.bank_account }}</strong>
+        </div>
+
+        <div class="payment-row">
+          <span class="pl">Variabilní symbol</span>
+          <strong>{{ invoice.variable_symbol }}</strong>
+        </div>
+
+        <div class="payment-row">
+          <span class="pl">Celková částka</span>
+          <strong>{{ total_incl | czk }}</strong>
+        </div>
+      </div>{# /payment-info #}
+
+      {# SPAYD QR Code #}
+      {% if qr_code_base64 %}
+      <div class="qr-block">
+        <img src="data:image/svg+xml;base64,{{ qr_code_base64 }}"
+             alt="QR kód pro platbu">
+      </div>
+      {% endif %}
+    </div>{# /payment-group #}
+    {% endif %}
+
+    {# Stamp / Signature #}
+    <div class="stamp-block">
+      {% if stamp_uri %}
+      <img src="{{ stamp_uri }}" alt="Razítko a podpis">
+      {% else %}
+      <div class="stamp-placeholder"></div>
+      {% endif %}
+      <div class="stamp-caption">Razítko&nbsp;a&nbsp;podpis</div>
+    </div>
+
+  </div>{# /bottom-section #}
+
+  {# ══════════════════════════════════════════════════════════════
+     NOTES  (rendered only when present)
+     ══════════════════════════════════════════════════════════════ #}
+  {% if invoice.notes %}
+  <div class="notes-block">
+    <strong>Poznámka:</strong>&nbsp;{{ invoice.notes }}
+  </div>
+  {% endif %}
+
+  {% if supplier.trade_register_date %}
+  <div class="page-footer">
+    Fyzická osoba zapsaná v živnostenském rejstříku od {{ supplier.trade_register_date }}.
+  </div>
+  {% endif %}
+
+</body>
+</html>

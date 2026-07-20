@@ -1,0 +1,31 @@
+# Secrets – never commit
+.env
+
+# Database – store in backups, not version control
+*.db
+backups/
+
+# User-uploaded files (logos, stamps, expense scans) – runtime user data,
+# backed up separately; never in version control.
+app/uploads/
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+dist/
+build/
+
+# Dev-only tooling (Tailwind standalone CLI binary, ~48 MB) – not needed at
+# runtime; the compiled app/static/css/tailwind.css is what gets served.
+.tools/
+
+# Test artifacts
+.pytest_cache/
+
+# Local Claude Code / editor settings – not application code
+.claude/
+
+# OS
+.DS_Store

@@ -1,0 +1,293 @@
+{% extends "base.html" %}
+{% set is_credit = invoice.doc_type == 'credit_note' %}
+{% block title %}{{ 'Dobropis' if is_credit else 'Faktura' }} {{ invoice.variable_symbol }}{% endblock %}
+
+{% block content %}
+
+<div class="max-w-4xl mx-auto">
+
+  {# ── Header ───────────────────────────────────────────────────────────── #}
+  <div class="flex items-start justify-between mb-6">
+    <div>
+      <p class="text-sm text-gray-400 mb-1">
+        <a href="/" class="hover:text-gray-600 transition-colors">&larr; Přehled</a>
+      </p>
+      <h1 class="text-2xl font-bold text-gray-800">
+        {{ 'Dobropis' if is_credit else 'Faktura' }} {{ invoice.variable_symbol }}
+      </h1>
+      {% if is_credit %}
+      <p class="text-sm text-gray-500 mt-1">
+        Opravný doklad k faktuře
+        {% if related_invoice %}
+        <a href="/faktury/{{ related_invoice.id }}"
+           class="font-mono font-semibold text-blue-700 hover:underline">č. {{ related_invoice.variable_symbol }}</a>
+        {% else %}—{% endif %}
+      </p>
+      {% endif %}
+    </div>
+    <div class="flex gap-2">
+      {% if not invoice.is_paid %}
+      <form method="post" action="/ui/faktury/{{ invoice.id }}/smazat"
+            onsubmit="return confirm('Opravdu smazat {{ 'dobropis' if is_credit else 'fakturu' }} {{ invoice.variable_symbol }}? Číslo v řadě zůstane vynechané, pokud nejde o poslední doklad.')">
+        <input type="hidden" name="redirect_to" value="/faktury">
+        <button type="submit"
+                class="px-4 py-2 rounded-md border border-red-200 text-sm font-medium
+                       text-red-600 hover:bg-red-50 transition-colors">
+          Smazat
+        </button>
+      </form>
+      {% endif %}
+      {% if not is_credit %}
+      <a href="/faktury/{{ invoice.id }}/dobropis"
+         class="px-4 py-2 rounded-md border border-gray-300 text-sm font-medium
+                text-gray-700 hover:bg-gray-50 transition-colors">
+        Dobropis
+      </a>
+      <a href="/faktury/{{ invoice.id }}/upravit"
+         class="px-4 py-2 rounded-md border border-gray-300 text-sm font-medium
+                text-gray-700 hover:bg-gray-50 transition-colors">
+        Upravit
+      </a>
+      {% endif %}
+      <a href="/invoices/{{ invoice.id }}/pdf"
+         class="px-4 py-2 rounded-md bg-blue-700 hover:bg-blue-800 text-white
+                text-sm font-semibold transition-colors">
+        ↓ PDF
+      </a>
+    </div>
+  </div>
+
+  {# ── Status + dates card ──────────────────────────────────────────────── #}
+  <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-4">
+
+    <div class="grid grid-cols-2 sm:grid-cols-4 gap-6 mb-5">
+
+      <div>
+        <p class="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">Stav</p>
+        {% if invoice.is_paid %}
+        <span class="badge-paid text-xs font-semibold px-2.5 py-1 rounded-full">
+          {{ 'Vráceno' if is_credit else 'Uhrazeno' }}
+        </span>
+        {% elif invoice.date_due < today_date %}
+        <span class="badge-overdue text-xs font-semibold px-2.5 py-1 rounded-full">
+          Po splatnosti
+        </span>
+        {% else %}
+        <span class="badge-unpaid text-xs font-semibold px-2.5 py-1 rounded-full">
+          {{ 'Čeká na vrácení' if is_credit else 'Čeká na úhradu' }}
+        </span>
+        {% endif %}
+      </div>
+
+      <div>
+        <p class="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">Vystaveno</p>
+        <p class="text-sm font-medium text-gray-800">{{ invoice.date_issued.strftime("%d.%m.%Y") }}</p>
+      </div>
+
+      <div>
+        <p class="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">Splatnost</p>
+        <p class="text-sm font-medium
+                  {% if not invoice.is_paid and invoice.date_due < today_date %}text-red-600
+                  {% else %}text-gray-800{% endif %}">
+          {{ invoice.date_due.strftime("%d.%m.%Y") }}
+        </p>
+      </div>
+
+      <div>
+        <p class="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">
+          {{ 'Datum vrácení' if is_credit else 'Datum úhrady' }}
+        </p>
+        <p class="text-sm font-medium text-gray-800">
+          {{ invoice.date_paid.strftime("%d.%m.%Y") if invoice.date_paid else "—" }}
+        </p>
+      </div>
+
+    </div>
+
+    {# Paid / unpaid toggle ------------------------------------------------ #}
+    <div class="pt-4 border-t border-gray-100">
+      {% if invoice.is_paid %}
+      <form method="post" action="/ui/faktury/{{ invoice.id }}/prepnout-zaplaceno" class="inline">
+        <input type="hidden" name="redirect_to" value="/faktury/{{ invoice.id }}">
+        <button type="submit"
+                class="text-sm text-gray-400 hover:text-red-600 font-medium
+                       transition-colors focus:outline-none">
+          ✕ {{ 'Zrušit vrácení' if is_credit else 'Zrušit úhradu' }}
+        </button>
+      </form>
+      {% else %}
+      <form method="post" action="/ui/faktury/{{ invoice.id }}/prepnout-zaplaceno"
+            class="flex flex-wrap items-center gap-3">
+        <input type="hidden" name="redirect_to" value="/faktury/{{ invoice.id }}">
+        <label for="date_paid_inp"
+               class="text-sm font-medium text-gray-600">
+          {{ 'Označit jako vráceno:' if is_credit else 'Označit jako uhrazeno:' }}
+        </label>
+        <input type="date" id="date_paid_inp" name="date_paid"
+               value="{{ today_date.isoformat() }}"
+               class="border border-gray-300 rounded-md px-3 py-1.5 text-sm
+                      focus:outline-none focus:ring-2 focus:ring-green-400
+                      focus:border-green-400">
+        <button type="submit"
+                class="px-4 py-1.5 rounded-md bg-green-600 hover:bg-green-700
+                       text-white text-sm font-semibold transition-colors
+                       focus:outline-none focus:ring-2 focus:ring-offset-1
+                       focus:ring-green-500">
+          ✓ {{ 'Vráceno' if is_credit else 'Uhrazeno' }}
+        </button>
+      </form>
+      {% endif %}
+    </div>
+
+    {# Dobropisy issued against this invoice #}
+    {% if credit_notes %}
+    <div class="pt-4 border-t border-gray-100 mt-4">
+      <p class="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5">Dobropisy</p>
+      {% for cn in credit_notes %}
+      <p class="text-sm">
+        <a href="/faktury/{{ cn.id }}"
+           class="font-mono font-semibold text-blue-700 hover:underline">{{ cn.variable_symbol }}</a>
+        <span class="text-gray-500">({{ cn.date_issued.strftime("%d.%m.%Y") }},
+          {{ cn.amount | money(cn.currency) }})</span>
+      </p>
+      {% endfor %}
+    </div>
+    {% endif %}
+
+  </div>
+
+  {# ── Two-column info: contact + invoice meta ───────────────────────────── #}
+  <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
+
+    {# Client ---------------------------------------------------------------- #}
+    <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-5">
+      <h2 class="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-3">Klient</h2>
+      <p class="font-semibold text-gray-800 mb-0.5">{{ contact.name }}</p>
+      <p class="text-sm text-gray-500 whitespace-pre-line mb-1">{{ contact.address }}</p>
+      <p class="text-sm text-gray-500">
+        IČO: <span class="font-mono">{{ contact.ic }}</span>
+        {% if contact.dic %}
+        &nbsp;·&nbsp; DIČ: <span class="font-mono">{{ contact.dic }}</span>
+        {% endif %}
+      </p>
+      {% if contact.email %}
+      <p class="text-sm mt-1">
+        <a href="mailto:{{ contact.email }}"
+           class="text-blue-600 hover:underline">{{ contact.email }}</a>
+      </p>
+      {% endif %}
+    </div>
+
+    {# Invoice meta ---------------------------------------------------------- #}
+    <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-5">
+      <h2 class="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-3">
+        Platební údaje
+      </h2>
+      <dl class="space-y-1.5 text-sm">
+        <div class="flex justify-between">
+          <dt class="text-gray-500">Způsob úhrady</dt>
+          <dd class="font-semibold text-gray-800">
+            {{ 'Hotově' if invoice.payment_method == 'cash' else 'Převodem' }}
+          </dd>
+        </div>
+        <div class="flex justify-between">
+          <dt class="text-gray-500">Variabilní symbol</dt>
+          <dd class="font-mono font-semibold text-gray-800">{{ invoice.variable_symbol }}</dd>
+        </div>
+        {% if invoice.payment_method != 'cash' %}
+        {% if supplier and supplier.bank_account %}
+        <div class="flex justify-between">
+          <dt class="text-gray-500">Číslo účtu</dt>
+          <dd class="font-mono text-gray-700">{{ supplier.bank_account }}</dd>
+        </div>
+        {% endif %}
+        {% if supplier and supplier.bank_iban %}
+        <div class="flex justify-between">
+          <dt class="text-gray-500">IBAN</dt>
+          <dd class="font-mono text-gray-700 text-xs">{{ supplier.bank_iban }}</dd>
+        </div>
+        {% endif %}
+        {% endif %}
+        <div class="flex justify-between">
+          <dt class="text-gray-500">Měna</dt>
+          <dd class="font-semibold text-gray-800">{{ invoice.currency | currency }}</dd>
+        </div>
+        <div class="flex justify-between border-t border-gray-100 pt-2 mt-2">
+          <dt class="font-semibold text-gray-700">{{ 'Celkem k vrácení' if is_credit else 'Celkem k úhradě' }}</dt>
+          <dd class="font-bold text-blue-700 text-base">
+            {{ invoice.amount | money(invoice.currency) }}
+          </dd>
+        </div>
+      </dl>
+    </div>
+
+  </div>
+
+  {# ── Line items ───────────────────────────────────────────────────────── #}
+  <div class="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden mb-4">
+
+    <div class="px-5 py-4 border-b border-gray-100">
+      <h2 class="text-sm font-semibold text-gray-700">
+        {{ 'Položky dobropisu' if is_credit else 'Položky faktury' }}
+      </h2>
+    </div>
+
+    <div class="overflow-x-auto">
+      <table class="w-full text-sm text-left">
+        <thead class="bg-gray-50 text-xs font-semibold text-gray-500 uppercase tracking-wide">
+          <tr>
+            <th class="px-5 py-3">Popis</th>
+            <th class="px-3 py-3 text-right">Množství</th>
+            <th class="px-3 py-3">Jedn.</th>
+            <th class="px-3 py-3 text-right">Jedn. cena</th>
+            <th class="px-3 py-3 text-right">DPH</th>
+            <th class="px-5 py-3 text-right">Celkem</th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-gray-100">
+          {% for item in items %}
+          {% set subtotal = item.quantity * item.unit_price %}
+          {% set vat_amt  = subtotal * item.vat_rate %}
+          {% set row_total = subtotal + vat_amt %}
+          <tr>
+            <td class="px-5 py-3 text-gray-800">{{ item.description }}</td>
+            <td class="px-3 py-3 text-right text-gray-600">{{ item.quantity }}</td>
+            <td class="px-3 py-3 text-gray-500">{{ item.unit | default('ks') }}</td>
+            <td class="px-3 py-3 text-right font-mono text-gray-700">
+              {{ item.unit_price | amount }}
+            </td>
+            <td class="px-3 py-3 text-right text-gray-500">
+              {{ (item.vat_rate * 100)|int }} %
+            </td>
+            <td class="px-5 py-3 text-right font-semibold text-gray-800 font-mono">
+              {{ row_total | amount }}
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+        <tfoot>
+          <tr class="border-t-2 border-gray-300 bg-gray-50">
+            <td colspan="5" class="px-5 py-3 text-right font-semibold text-gray-700">
+              {{ 'Celkem k vrácení:' if is_credit else 'Celkem k úhradě:' }}
+            </td>
+            <td class="px-5 py-3 text-right font-bold text-blue-700 text-base font-mono">
+              {{ invoice.amount | money(invoice.currency) }}
+            </td>
+          </tr>
+        </tfoot>
+      </table>
+    </div>
+
+  </div>
+
+  {# ── Notes ────────────────────────────────────────────────────────────── #}
+  {% if invoice.notes %}
+  <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-5 mb-4">
+    <h2 class="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Poznámka</h2>
+    <p class="text-sm text-gray-700 whitespace-pre-line">{{ invoice.notes }}</p>
+  </div>
+  {% endif %}
+
+</div>
+
+{% endblock %}

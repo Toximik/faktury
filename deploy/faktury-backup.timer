@@ -1,0 +1,18 @@
+[Unit]
+Description=Weekly Fakturace backup (Sunday 02:00)
+
+[Timer]
+# Every Sunday at 02:00 local time.
+OnCalendar=Sun *-*-* 02:00:00
+
+# If the machine was off/asleep at the scheduled time, run the backup as soon
+# as it comes back up instead of silently skipping the week. This is the main
+# reason to prefer a timer over cron.
+Persistent=true
+
+# Spread the start over a few minutes so it never collides on the dot with
+# anything else scheduled at 02:00.
+RandomizedDelaySec=300
+
+[Install]
+WantedBy=timers.target

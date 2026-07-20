@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="cs" class="h-full bg-gray-100">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Přihlášení – Fakturace</title>
+  <link rel="stylesheet" href="/static/css/tailwind.css">
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+
+<body class="h-full flex items-center justify-center">
+
+  <div class="w-full max-w-sm">
+
+    {# Brand mark #}
+    <div class="text-center mb-8">
+      <svg xmlns="http://www.w3.org/2000/svg" class="h-12 w-12 text-blue-700 mx-auto mb-2"
+           fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
+        <path stroke-linecap="round" stroke-linejoin="round"
+              d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586
+                 a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0
+                 01-2 2z"/>
+      </svg>
+      <h1 class="text-2xl font-bold text-gray-800 tracking-tight">Fakturace</h1>
+      <p class="text-sm text-gray-500 mt-1">Přihlaste se ke svému účtu</p>
+    </div>
+
+    {# Login card #}
+    <div class="bg-white shadow-md rounded-lg px-8 py-8">
+
+      {# Error flash #}
+      {% if error %}
+      <div class="flash-error rounded px-4 py-3 text-sm mb-5">
+        {{ error }}
+      </div>
+      {% endif %}
+
+      {# POST /login – sets HttpOnly cookie and redirects to / #}
+      <form method="post" action="/login" class="space-y-5">
+
+        <div>
+          <label for="username"
+                 class="block text-sm font-medium text-gray-700 mb-1">
+            Uživatelské jméno
+          </label>
+          <input type="text"
+                 id="username"
+                 name="username"
+                 required
+                 autocomplete="username"
+                 class="w-full border border-gray-300 rounded-md px-3 py-2
+                        text-sm text-gray-900 placeholder-gray-400
+                        focus:outline-none focus:ring-2 focus:ring-blue-500
+                        focus:border-blue-500 transition">
+        </div>
+
+        <div>
+          <label for="password"
+                 class="block text-sm font-medium text-gray-700 mb-1">
+            Heslo
+          </label>
+          <input type="password"
+                 id="password"
+                 name="password"
+                 required
+                 autocomplete="current-password"
+                 class="w-full border border-gray-300 rounded-md px-3 py-2
+                        text-sm text-gray-900 placeholder-gray-400
+                        focus:outline-none focus:ring-2 focus:ring-blue-500
+                        focus:border-blue-500 transition">
+        </div>
+
+        <button type="submit"
+                class="w-full bg-blue-700 hover:bg-blue-800 text-white
+                       font-semibold rounded-md py-2.5 text-sm
+                       transition-colors focus:outline-none focus:ring-2
+                       focus:ring-offset-2 focus:ring-blue-600">
+          Přihlásit se
+        </button>
+
+      </form>
+    </div>
+
+  </div>
+
+</body>
+</html>

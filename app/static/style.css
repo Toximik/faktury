@@ -1,0 +1,41 @@
+/*
+ * style.css – Minimal overrides on top of Tailwind CDN.
+ *
+ * Keep this file small. Tailwind covers the heavy lifting.
+ * Add one-off fixes here that Tailwind's utility classes cannot express
+ * cleanly inline (e.g. print rules, WeasyPrint-specific tweaks).
+ */
+
+/* ── Print / PDF suppression ────────────────────────────────────────────── */
+@media print {
+  nav, .no-print { display: none !important; }
+}
+
+/* ── Status badge helpers ────────────────────────────────────────────────── */
+.badge-paid {
+  background-color: #d1fae5;   /* green-100 */
+  color: #065f46;              /* green-800 */
+}
+
+.badge-unpaid {
+  background-color: #fee2e2;   /* red-100 */
+  color: #991b1b;              /* red-800 */
+}
+
+.badge-overdue {
+  background-color: #fef3c7;   /* amber-100 */
+  color: #92400e;              /* amber-800 */
+}
+
+/* ── Flash message ───────────────────────────────────────────────────────── */
+.flash-error {
+  background-color: #fee2e2;
+  border-left: 4px solid #ef4444;
+  color: #7f1d1d;
+}
+
+.flash-success {
+  background-color: #d1fae5;
+  border-left: 4px solid #10b981;
+  color: #064e3b;
+}

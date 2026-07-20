@@ -1,0 +1,145 @@
+{% extends "base.html" %}
+{% block title %}Statistiky{% endblock %}
+
+{% macro czk(value) -%}
+{{ value | money }}
+{%- endmacro %}
+
+{% block content %}
+
+<div class="flex items-center justify-between mb-6">
+  <h1 class="text-2xl font-bold text-gray-800">Statistiky</h1>
+  <a href="/export/{{ selected_year }}?date_field={{ date_field }}"
+     class="bg-blue-700 hover:bg-blue-800 text-white text-sm font-semibold
+            px-4 py-2 rounded-md transition-colors">
+    ↓ Stáhnout CSV {{ selected_year }}
+  </a>
+</div>
+
+<div class="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
+
+  {# Filters #}
+  <form method="get" action="/statistiky"
+        class="flex flex-wrap items-center gap-6 px-5 py-4 border-b border-gray-100">
+    <label class="flex items-center gap-2 text-sm text-gray-600">
+      Rok
+      <select name="year" onchange="this.form.submit()"
+              class="border border-gray-300 rounded-md px-2 py-1 text-sm
+                     focus:outline-none focus:ring-2 focus:ring-blue-500">
+        {% for y in years %}
+        <option value="{{ y }}" {% if selected_year == y %}selected{% endif %}>{{ y }}</option>
+        {% endfor %}
+        {% if selected_year not in years %}
+        <option value="{{ selected_year }}" selected>{{ selected_year }}</option>
+        {% endif %}
+      </select>
+    </label>
+
+    <label class="flex items-center gap-2 text-sm text-gray-600">
+      Faktury podle
+      <select name="date_field" onchange="this.form.submit()"
+              class="border border-gray-300 rounded-md px-2 py-1 text-sm
+                     focus:outline-none focus:ring-2 focus:ring-blue-500">
+        <option value="issued" {% if date_field == "issued" %}selected{% endif %}>data vystavení</option>
+        <option value="paid"   {% if date_field == "paid"   %}selected{% endif %}>data zaplacení</option>
+      </select>
+    </label>
+  </form>
+
+  {# Chart: monthly income vs expenses with a profit trend line #}
+  <div class="px-5 py-5 border-b border-gray-100">
+    <div class="flex flex-wrap items-center gap-5 mb-4 text-xs text-gray-600">
+      <span class="flex items-center gap-1.5">
+        <span class="inline-block w-3 h-3 rounded-sm bg-green-600"></span> Faktury
+      </span>
+      <span class="flex items-center gap-1.5">
+        <span class="inline-block w-3 h-3 rounded-sm bg-red-500"></span> Náklady
+      </span>
+      <span class="flex items-center gap-1.5">
+        <span class="inline-block w-4 h-0.5 bg-indigo-600"></span> Zisk
+      </span>
+    </div>
+
+    {% if chart.has_data %}
+    <div class="overflow-x-auto">
+      <svg viewBox="0 0 {{ chart.width }} {{ chart.height }}" width="100%"
+           preserveAspectRatio="xMidYMid meet"
+           class="min-w-[560px] max-w-[720px] mx-auto block" role="img"
+           aria-label="Měsíční přehled faktur, nákladů a zisku">
+        {# zero reference line #}
+        <line x1="0" y1="{{ '%.1f'|format(chart.zero_y) }}"
+              x2="{{ chart.width }}" y2="{{ '%.1f'|format(chart.zero_y) }}"
+              stroke="#e5e7eb" stroke-width="1"/>
+        {% for b in chart.bars %}
+        <g>
+          <rect x="{{ '%.1f'|format(b.inv_x) }}" y="{{ '%.1f'|format(b.inv_y) }}"
+                width="{{ b.bar_w }}" height="{{ '%.1f'|format(b.inv_h) }}"
+                rx="2" fill="#16a34a">
+            <title>{{ b.name }} — Faktury: {{ czk(b.invoices) }}</title>
+          </rect>
+          <rect x="{{ '%.1f'|format(b.exp_x) }}" y="{{ '%.1f'|format(b.exp_y) }}"
+                width="{{ b.bar_w }}" height="{{ '%.1f'|format(b.exp_h) }}"
+                rx="2" fill="#ef4444">
+            <title>{{ b.name }} — Náklady: {{ czk(b.expenses) }}</title>
+          </rect>
+          <text x="{{ '%.1f'|format(b.cx) }}" y="{{ chart.label_y }}"
+                text-anchor="middle" font-size="10" fill="#9ca3af">{{ b.short }}</text>
+        </g>
+        {% endfor %}
+        {# profit trend line + points #}
+        <polyline points="{{ chart.line }}" fill="none"
+                  stroke="#4f46e5" stroke-width="2"
+                  stroke-linejoin="round" stroke-linecap="round"/>
+        {% for b in chart.bars %}
+        <circle cx="{{ '%.1f'|format(b.cx) }}" cy="{{ '%.1f'|format(b.diff_y) }}"
+                r="2.5" fill="#4f46e5">
+          <title>{{ b.name }} — Zisk: {{ czk(b.diff) }}</title>
+        </circle>
+        {% endfor %}
+      </svg>
+    </div>
+    {% else %}
+    <p class="text-sm text-gray-400 py-8 text-center">Žádná data pro {{ selected_year }}.</p>
+    {% endif %}
+  </div>
+
+  <div class="overflow-x-auto">
+    <table class="min-w-full text-sm">
+      <thead>
+        <tr class="text-left text-gray-500 border-b border-gray-100">
+          <th class="px-5 py-3 font-medium">Měsíc</th>
+          <th class="px-5 py-3 font-medium text-right">Faktury</th>
+          <th class="px-5 py-3 font-medium text-right">Náklady</th>
+          <th class="px-5 py-3 font-medium text-right">Rozdíl</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for row in rows %}
+        <tr class="border-b border-gray-50 hover:bg-gray-50">
+          <td class="px-5 py-2.5 text-gray-700">{{ row.name }}</td>
+          <td class="px-5 py-2.5 text-right tabular-nums text-gray-800">{{ czk(row.invoices) }}</td>
+          <td class="px-5 py-2.5 text-right tabular-nums text-gray-800">{{ czk(row.expenses) }}</td>
+          <td class="px-5 py-2.5 text-right tabular-nums font-medium
+                     {% if row.diff < 0 %}text-red-600{% else %}text-green-700{% endif %}">
+            {{ czk(row.diff) }}
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+      <tfoot>
+        <tr class="border-t-2 border-gray-200 bg-gray-50 font-semibold text-gray-800">
+          <td class="px-5 py-3">Celkem {{ selected_year }}</td>
+          <td class="px-5 py-3 text-right tabular-nums">{{ czk(totals.invoices) }}</td>
+          <td class="px-5 py-3 text-right tabular-nums">{{ czk(totals.expenses) }}</td>
+          <td class="px-5 py-3 text-right tabular-nums
+                     {% if totals.diff < 0 %}text-red-600{% else %}text-green-700{% endif %}">
+            {{ czk(totals.diff) }}
+          </td>
+        </tr>
+      </tfoot>
+    </table>
+  </div>
+
+</div>
+
+{% endblock %}

@@ -1,0 +1,483 @@
+{% extends "base.html" %}
+{% block title %}{% if credit_note_of %}Dobropis k faktuře {{ credit_note_of.variable_symbol }}{% elif invoice %}Upravit fakturu {{ invoice.variable_symbol }}{% else %}Nová faktura{% endif %}{% endblock %}
+
+{% block content %}
+
+<div class="max-w-3xl mx-auto">
+
+  <div class="flex items-center justify-between mb-6">
+    <h1 class="text-2xl font-bold text-gray-800">
+      {% if credit_note_of %}Dobropis k faktuře {{ credit_note_of.variable_symbol }}{% elif invoice %}Upravit fakturu {{ invoice.variable_symbol }}{% else %}Nová faktura{% endif %}
+    </h1>
+    <a href="{% if credit_note_of %}/faktury/{{ credit_note_of.id }}{% elif invoice %}/faktury/{{ invoice.id }}{% else %}/{% endif %}"
+       class="text-sm text-gray-500 hover:text-gray-700 transition-colors">&larr; Zpět</a>
+  </div>
+
+  {# ── FORM ─────────────────────────────────────────────────────────────── #}
+  {#
+     The form POSTs to the JSON API endpoint (/invoices or PATCH /invoices/{id}).
+     JavaScript intercepts the submit, serialises the items table to a JSON
+     array, and sends the whole payload as application/json.
+  #}
+  <form id="invoice-form" class="space-y-6"
+        {% if credit_note_of %}data-credit-note-of="{{ credit_note_of.id }}"
+        data-initial-items='{{ prefilled_items | tojson }}'{% elif invoice %}data-invoice-id="{{ invoice.id }}"
+        data-initial-items='{{ invoice.get_items() | tojson }}'{% endif %}>
+
+    {# ── Invoice metadata ─────────────────────────────────────────────── #}
+    <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+      <h2 class="text-sm font-semibold text-gray-600 uppercase tracking-wide mb-4">
+        Základní údaje
+      </h2>
+
+      <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+
+        {# Invoice number (Variable Symbol) #}
+        <div class="sm:col-span-2">
+          <label for="variable_symbol"
+                 class="block text-sm font-medium text-gray-700 mb-1">
+            {% if credit_note_of %}Číslo dobropisu{% else %}Číslo faktury{% endif %}
+          </label>
+          {% if credit_note_of %}
+          {# Dobropis: number is always assigned from its own series (YYYY9NNN). #}
+          <input type="text" id="variable_symbol" value="{{ next_vs }}" readonly
+                 class="w-48 border border-gray-200 bg-gray-50 text-gray-500 rounded-md px-3 py-2
+                        text-sm font-mono cursor-not-allowed">
+          <p class="text-xs text-gray-400 mt-1">Přiděleno z řady dobropisů; nelze změnit.</p>
+          {% elif invoice %}
+          {# Existing invoice: number is fixed (shown for reference). #}
+          <input type="text" id="variable_symbol" value="{{ invoice.variable_symbol }}" readonly
+                 class="w-48 border border-gray-200 bg-gray-50 text-gray-500 rounded-md px-3 py-2
+                        text-sm font-mono cursor-not-allowed">
+          {% else %}
+          <input type="text" id="variable_symbol" name="variable_symbol"
+                 value="{{ next_vs }}" inputmode="numeric" pattern="\d*" maxlength="10"
+                 class="w-48 border border-gray-300 rounded-md px-3 py-2 text-sm font-mono
+                        focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+          <p class="text-xs text-gray-400 mt-1">Předvyplněno dalším číslem; můžete změnit.</p>
+          {% endif %}
+        </div>
+
+        {# Client contact #}
+        <div class="sm:col-span-2">
+          {% if credit_note_of %}
+          {# Dobropis: the customer is inherited from the corrected invoice. #}
+          <label class="block text-sm font-medium text-gray-700 mb-1">Klient</label>
+          <input type="text" value="{{ contact_name }}" readonly
+                 class="w-full border border-gray-200 bg-gray-50 text-gray-500 rounded-md px-3 py-2
+                        text-sm cursor-not-allowed">
+          {% else %}
+          <label for="contact_id"
+                 class="block text-sm font-medium text-gray-700 mb-1">
+            Klient <span class="text-red-500">*</span>
+          </label>
+          <select id="contact_id" name="contact_id" required
+                  class="w-full border border-gray-300 rounded-md px-3 py-2 text-sm
+                         focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+            <option value="">— Vyberte klienta —</option>
+            {% for c in contacts %}
+            <option value="{{ c.id }}"
+              data-due-days="{{ c.payment_due_days or default_due_days }}"
+              {% if invoice and invoice.contact_id == c.id %}selected{% endif %}>
+              {{ c.name }} (IČO: {{ c.ic }})
+            </option>
+            {% endfor %}
+          </select>
+          {% if not contacts %}
+          <p class="text-xs text-amber-600 mt-1">
+            Nejprve
+            <a href="/kontakty/novy" class="underline">přidejte klienta</a>.
+          </p>
+          {% endif %}
+          {% endif %}
+        </div>
+
+        {# Date issued #}
+        <div>
+          <label for="date_issued"
+                 class="block text-sm font-medium text-gray-700 mb-1">
+            Datum vystavení <span class="text-red-500">*</span>
+          </label>
+          <input type="date" id="date_issued" name="date_issued" required
+                 value="{% if invoice %}{{ invoice.date_issued.isoformat() }}{% else %}{{ today }}{% endif %}"
+                 class="w-full border border-gray-300 rounded-md px-3 py-2 text-sm
+                        focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+        </div>
+
+        {# Splatnost (payment term in days) → due date is derived #}
+        <div>
+          <label for="due_days"
+                 class="block text-sm font-medium text-gray-700 mb-1">
+            Splatnost ve dnech <span class="text-red-500">*</span>
+          </label>
+          <input type="number" id="due_days" name="due_days" min="1" step="1" required
+                 value="{{ due_days }}"
+                 class="w-full border border-gray-300 rounded-md px-3 py-2 text-sm
+                        focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+          <p id="due_hint" class="text-xs text-gray-500 mt-1"></p>
+          {# The API stores an actual due date; JS keeps this in sync. #}
+          <input type="hidden" id="date_due" name="date_due">
+        </div>
+
+        {# Payment method — a dobropis inherits it from the corrected invoice. #}
+        {% if not credit_note_of %}
+        <div>
+          <label for="payment_method"
+                 class="block text-sm font-medium text-gray-700 mb-1">
+            Způsob úhrady
+          </label>
+          <select id="payment_method" name="payment_method"
+                  class="w-full border border-gray-300 rounded-md px-3 py-2 text-sm
+                         focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+            <option value="transfer" {% if payment_method != 'cash' %}selected{% endif %}>Převodem</option>
+            <option value="cash" {% if payment_method == 'cash' %}selected{% endif %}>Hotově</option>
+          </select>
+        </div>
+        {% endif %}
+
+        {# Currency — locked to CZK. The app's totals, accounting CSV and SPAYD
+           payment QR all assume a single currency (CZK), so the selector is
+           intentionally hidden rather than offered. The field is kept so the
+           JS payload builder still reads a value. #}
+        <input type="hidden" id="currency" name="currency"
+               value="{{ invoice.currency if invoice else 'CZK' }}">
+
+        {# Notes #}
+        <div class="sm:col-span-2">
+          <label for="notes"
+                 class="block text-sm font-medium text-gray-700 mb-1">
+            Poznámka (nepovinné)
+          </label>
+          <textarea id="notes" name="notes" rows="2"
+                    placeholder="Doplňující informace k faktuře…"
+                    class="w-full border border-gray-300 rounded-md px-3 py-2 text-sm
+                           focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500
+                           resize-none">{{ invoice.notes if invoice and invoice.notes else '' }}</textarea>
+        </div>
+
+      </div>
+    </div>{# /metadata card #}
+
+    {# ── Line items ───────────────────────────────────────────────────── #}
+    <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+      <div class="flex items-center justify-between mb-4">
+        <h2 class="text-sm font-semibold text-gray-600 uppercase tracking-wide">
+          {% if credit_note_of %}Položky dobropisu{% else %}Položky faktury{% endif %}
+        </h2>
+        <button type="button" id="add-row-btn"
+                class="text-sm text-blue-700 hover:text-blue-900 font-medium
+                       transition-colors focus:outline-none">
+          + Přidat řádek
+        </button>
+      </div>
+
+      <div class="overflow-x-auto">
+        <table class="w-full text-sm" id="items-table">
+          <thead>
+            <tr class="text-xs font-semibold text-gray-500 uppercase tracking-wide border-b border-gray-200">
+              <th class="pb-2 text-left">Popis</th>
+              <th class="pb-2 text-right w-20">Množství</th>
+              <th class="pb-2 text-left w-20 pl-2">Jedn.</th>
+              <th class="pb-2 text-right w-32">Jedn. cena</th>
+              {# DPH column hidden – not supported yet; vat_rate is always 0 #}
+              <th class="pb-2 text-right w-32">Celkem</th>
+              <th class="pb-2 w-8"></th>
+            </tr>
+          </thead>
+          <tbody id="items-body">
+            {# Rows injected by JS #}
+          </tbody>
+          <tfoot>
+            <tr class="border-t-2 border-gray-300">
+              <td colspan="4"
+                  class="pt-3 text-sm font-semibold text-gray-600 text-right pr-3">
+                {% if credit_note_of %}Celkem k vrácení:{% else %}Celkem k úhradě:{% endif %}
+              </td>
+              <td class="pt-3 text-right text-lg font-bold text-blue-700"
+                  id="grand-total">0,00</td>
+              <td></td>
+            </tr>
+          </tfoot>
+        </table>
+      </div>
+      {% if credit_note_of %}
+      <p class="text-xs text-gray-400 mt-3">
+        Jednotkové ceny dobropisu jsou záporné (vracená částka). Pro částečný
+        dobropis upravte množství či ceny, nebo odeberte řádky.
+      </p>
+      {% endif %}
+    </div>{# /items card #}
+
+    {# ── Error display ────────────────────────────────────────────────── #}
+    <div id="form-error" class="flash-error rounded px-4 py-3 text-sm hidden"></div>
+
+    {# ── Submit ───────────────────────────────────────────────────────── #}
+    <div class="flex justify-end gap-3">
+      <a href="{% if credit_note_of %}/faktury/{{ credit_note_of.id }}{% else %}/{% endif %}"
+         class="px-5 py-2.5 rounded-md border border-gray-300 text-sm font-medium
+                text-gray-700 hover:bg-gray-50 transition-colors">
+        Zrušit
+      </a>
+      <button type="submit"
+              class="px-6 py-2.5 rounded-md bg-blue-700 hover:bg-blue-800 text-white
+                     text-sm font-semibold transition-colors focus:outline-none
+                     focus:ring-2 focus:ring-offset-2 focus:ring-blue-600">
+        {% if credit_note_of %}Vystavit dobropis{% elif invoice %}Uložit změny{% else %}Vytvořit fakturu{% endif %}
+      </button>
+    </div>
+
+  </form>
+
+</div>{# /max-w-3xl #}
+
+{% endblock %}
+
+{# ══════════════════════════════════════════════════════════════
+   JAVASCRIPT  –  Dynamic line-item table + JSON submit
+   All logic is vanilla JS, zero dependencies.
+   ══════════════════════════════════════════════════════════════ #}
+{% block scripts %}
+<script>
+"use strict";
+
+// ── Helpers ────────────────────────────────────────────────────────────────
+
+const tbody   = document.getElementById("items-body");
+const addBtn  = document.getElementById("add-row-btn");
+const totalEl = document.getElementById("grand-total");
+const errEl   = document.getElementById("form-error");
+const form    = document.getElementById("invoice-form");
+const invoiceId    = form.dataset.invoiceId    || null;
+const creditNoteOf = form.dataset.creditNoteOf || null;  // dobropis mode: id of the corrected invoice
+const initialItems = form.dataset.initialItems ? JSON.parse(form.dataset.initialItems) : null;
+
+/** Format a number as Czech decimal: 1234.5 → "1 234,50" */
+function fmtCZK(n) {
+  const fixed = n.toFixed(2);
+  const [int, dec] = fixed.split(".");
+  // Add non-breaking space every 3 digits from the right
+  const grouped = int.replace(/\B(?=(\d{3})+(?!\d))/g, "\u00a0");
+  return `${grouped},${dec}`;
+}
+
+/** Recompute all row totals and the grand total footer. */
+function recalculate() {
+  let grand = 0;
+  tbody.querySelectorAll("tr").forEach(row => {
+    const qty      = parseFloat(row.querySelector(".inp-qty").value)      || 0;
+    const price    = parseFloat(row.querySelector(".inp-price").value)    || 0;
+    const subtotal = Math.round(qty * price * 100) / 100;
+    grand += subtotal;
+    row.querySelector(".cell-total").textContent = fmtCZK(subtotal);
+  });
+  totalEl.textContent = fmtCZK(grand);
+}
+
+/** Build a new table row <tr> with input cells, optionally pre-filled. */
+function buildRow(data = null) {
+  const tr = document.createElement("tr");
+  tr.className = "border-b border-gray-100 align-top";
+  tr.innerHTML = `
+    <td class="py-2 pr-2">
+      <input type="text" placeholder="Popis služby / zboží…" required
+             value="${data ? data.description.replace(/"/g, '&quot;') : ''}"
+             class="inp-desc w-full border border-gray-200 rounded px-2 py-1 text-sm
+                    focus:outline-none focus:ring-1 focus:ring-blue-400">
+    </td>
+    <td class="py-2 pl-1 pr-1">
+      <input type="number" value="${data ? data.quantity : 1}" min="0.01" step="0.01" required
+             class="inp-qty w-full border border-gray-200 rounded px-2 py-1 text-sm
+                    text-right focus:outline-none focus:ring-1 focus:ring-blue-400">
+    </td>
+    <td class="py-2 pl-2 pr-1">
+      <input type="text" value="${data ? data.unit : 'ks'}" placeholder="ks"
+             class="inp-unit w-full border border-gray-200 rounded px-2 py-1 text-sm
+                    focus:outline-none focus:ring-1 focus:ring-blue-400">
+    </td>
+    <td class="py-2 pl-1 pr-1">
+      <input type="number" value="${data ? data.unit_price : ''}"
+             ${creditNoteOf ? 'max="-0.01"' : 'min="0"'} step="0.01"
+             placeholder="${creditNoteOf ? '-0,00' : '0,00'}" required
+             class="inp-price w-full border border-gray-200 rounded px-2 py-1 text-sm
+                    text-right focus:outline-none focus:ring-1 focus:ring-blue-400">
+    </td>
+    <td class="py-2 pl-2 text-right font-semibold text-gray-700 cell-total whitespace-nowrap">
+      0,00
+    </td>
+    <td class="py-2 pl-2 text-center">
+      <button type="button"
+              class="btn-remove text-gray-300 hover:text-red-500 text-lg leading-none
+                     transition-colors focus:outline-none"
+              title="Odebrat řádek">
+        &times;
+      </button>
+    </td>
+  `;
+  // Wire up events
+  tr.querySelectorAll(".inp-qty, .inp-price").forEach(el =>
+    el.addEventListener("input", recalculate)
+  );
+  tr.querySelector(".btn-remove").addEventListener("click", () => {
+    if (tbody.querySelectorAll("tr").length > 1) {
+      tr.remove();
+      recalculate();
+    }
+  });
+  return tr;
+}
+
+/** Serialise the items table to an array suitable for the API. */
+function collectItems() {
+  const items = [];
+  let valid = true;
+  tbody.querySelectorAll("tr").forEach(row => {
+    const desc  = row.querySelector(".inp-desc").value.trim();
+    const qty   = parseFloat(row.querySelector(".inp-qty").value);
+    const unit  = row.querySelector(".inp-unit").value.trim() || "ks";
+    const price = parseFloat(row.querySelector(".inp-price").value);
+    if (!desc || isNaN(qty) || isNaN(price)) { valid = false; return; }
+    items.push({
+      description: desc,
+      quantity:    qty,
+      unit:        unit,
+      unit_price:  price,
+      vat_rate:    0,   // Neplátce DPH – always 0; field kept for future VAT support
+    });
+  });
+  return valid ? items : null;
+}
+
+// ── Initialise ────────────────────────────────────────────────────────────
+
+addBtn.addEventListener("click", () => {
+  tbody.appendChild(buildRow());
+});
+
+// Pre-populate rows from existing invoice items when editing, otherwise one blank row
+if (initialItems && initialItems.length > 0) {
+  initialItems.forEach(item => { tbody.appendChild(buildRow(item)); });
+  recalculate();
+} else {
+  tbody.appendChild(buildRow());
+}
+
+// ── Splatnost (days) → derived due date ────────────────────────────────────
+// The user enters a number of days; the actual due date is issue date + days.
+// We show it as "Vychází na D. M. YYYY." and keep the hidden date_due input
+// (which the API stores) in sync. Selecting a client prefills the day count
+// from that client's saved term (data-due-days).
+
+const contactSel = document.getElementById("contact_id");  // absent in dobropis mode
+const issuedInp  = document.getElementById("date_issued");
+const daysInp    = document.getElementById("due_days");
+const dueHidden  = document.getElementById("date_due");
+const dueHint    = document.getElementById("due_hint");
+
+/** Return the due Date (issue date + N days), or null if inputs are incomplete. */
+function computeDueDate() {
+  const days = parseInt(daysInp.value, 10);
+  if (!issuedInp.value || isNaN(days) || days < 1) return null;
+  const [y, m, d] = issuedInp.value.split("-").map(Number);
+  return new Date(Date.UTC(y, m - 1, d + days));
+}
+
+/** Refresh the hidden date_due value and the "Vychází na …" hint. */
+function refreshDueDate() {
+  const due = computeDueDate();
+  if (!due) { dueHidden.value = ""; dueHint.textContent = ""; return; }
+  dueHidden.value = due.toISOString().slice(0, 10);
+  dueHint.textContent =
+    `Vychází na ${due.getUTCDate()}. ${due.getUTCMonth() + 1}. ${due.getUTCFullYear()}.`;
+}
+
+// Prefill the day count from the selected client's saved term.
+if (contactSel) {
+  contactSel.addEventListener("change", () => {
+    const opt = contactSel.options[contactSel.selectedIndex];
+    const days = opt ? parseInt(opt.dataset.dueDays, 10) : NaN;
+    if (!isNaN(days)) daysInp.value = days;
+    refreshDueDate();
+  });
+}
+issuedInp.addEventListener("change", refreshDueDate);
+daysInp.addEventListener("input", refreshDueDate);
+refreshDueDate();   // initial hint on page load
+
+// ── Form submission ───────────────────────────────────────────────────────
+
+document.getElementById("invoice-form").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  errEl.classList.add("hidden");
+
+  const items = collectItems();
+  if (!items || items.length === 0) {
+    errEl.textContent = "Přidejte alespoň jednu položku s popisem a cenou.";
+    errEl.classList.remove("hidden");
+    return;
+  }
+
+  refreshDueDate();   // ensure date_due reflects the current day count
+
+  let payload;
+  if (creditNoteOf) {
+    // Dobropis: contact, currency and payment method are inherited from the
+    // corrected invoice server-side; the number always comes from its series.
+    payload = {
+      date_issued: document.getElementById("date_issued").value,
+      date_due:    document.getElementById("date_due").value,
+      notes:       document.getElementById("notes").value.trim() || null,
+      items:       items,
+    };
+  } else {
+    payload = {
+      contact_id:     parseInt(document.getElementById("contact_id").value, 10),
+      date_issued:    document.getElementById("date_issued").value,
+      date_due:       document.getElementById("date_due").value,
+      currency:       document.getElementById("currency").value,
+      payment_method: document.getElementById("payment_method").value,
+      notes:          document.getElementById("notes").value.trim() || null,
+      items:          items,
+    };
+    // Invoice number is editable only when creating (the field has a name only then).
+    const vsField = document.getElementById("variable_symbol");
+    if (!invoiceId && vsField && vsField.name) {
+      payload.variable_symbol = vsField.value.trim() || null;
+    }
+  }
+
+  // POST to create (invoice or dobropis), PATCH to update
+  const url    = creditNoteOf ? `/invoices/${creditNoteOf}/credit-note`
+               : invoiceId    ? `/invoices/${invoiceId}` : "/invoices";
+  const method = invoiceId ? "PATCH" : "POST";
+
+  // The API endpoint uses Bearer auth via the HttpOnly cookie
+  // which is sent automatically by the browser – no manual token handling needed.
+  try {
+    const res = await fetch(url, {
+      method,
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+
+    if (res.ok) {
+      // Redirect to detail page (dashboard for a new invoice,
+      // the created dobropis's detail in credit-note mode)
+      const data = await res.json().catch(() => ({}));
+      window.location.href = creditNoteOf ? `/faktury/${data.id}`
+                           : invoiceId    ? `/faktury/${invoiceId}` : "/";
+    } else {
+      const data = await res.json().catch(() => ({}));
+      const detail = data.detail ?? `Chyba serveru (${res.status}).`;
+      // detail can be a string (our HTTPException) or a Pydantic validation array
+      errEl.textContent = Array.isArray(detail)
+        ? detail.map(d => d.msg).join(", ")
+        : String(detail);
+      errEl.classList.remove("hidden");
+    }
+  } catch (err) {
+    errEl.textContent = "Síťová chyba. Zkontrolujte připojení.";
+    errEl.classList.remove("hidden");
+  }
+});
+</script>
+{% endblock %}

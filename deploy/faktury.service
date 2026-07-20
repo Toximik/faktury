@@ -1,0 +1,74 @@
+[Unit]
+Description=Fakturace – Invoice & Expense Manager (Gunicorn/Uvicorn)
+Documentation=https://fastapi.tiangolo.com
+After=network.target
+
+[Service]
+# ── Identity ──────────────────────────────────────────────────────────────────
+# Run as a dedicated non-privileged system user, never as root.
+User=faktury
+Group=faktury
+
+# ── Project paths ─────────────────────────────────────────────────────────────
+# Adjust /weby/faktury.tmcm.cz/app if you chose a different deployment directory.
+WorkingDirectory=/weby/faktury.tmcm.cz/app
+
+# ── Environment ───────────────────────────────────────────────────────────────
+# All secrets live in .env – never in this unit file.
+# Generate SECRET_KEY with: python3 -c "import secrets; print(secrets.token_hex(32))"
+EnvironmentFile=/weby/faktury.tmcm.cz/app/.env
+
+# The 'faktury' user is created with --no-create-home and ProtectHome=true hides
+# /home, so Gunicorn's control server can't create its ~/.gunicorn/gunicorn.ctl
+# socket ("Control server error: Permission denied: '/home/faktury'"). Point HOME
+# at the writable runtime dir below so it lands in /run/faktury instead.
+Environment=HOME=/run/faktury
+
+# ── Runtime socket directory ──────────────────────────────────────────────────
+# systemd creates /run/faktury/ before the process starts and removes it
+# on stop. This is more secure than /tmp/ and survives across restarts.
+RuntimeDirectory=faktury
+RuntimeDirectoryMode=0750
+
+# ── Process startup ───────────────────────────────────────────────────────────
+# - UvicornWorker gives us async ASGI support inside Gunicorn's process model.
+# - 2 workers is ample for a single-user freelancer system.
+# - --timeout 120 accommodates WeasyPrint PDF generation (can be slow on small VMs).
+# - Bind to a Unix socket; Nginx connects to it via upstream proxy_pass.
+ExecStart=/weby/faktury.tmcm.cz/app/.venv/bin/gunicorn \
+    --worker-class uvicorn.workers.UvicornWorker \
+    --workers 2 \
+    --timeout 120 \
+    --bind unix:/run/faktury/gunicorn.sock \
+    --umask 007 \
+    --access-logfile /weby/faktury.tmcm.cz/logs/access.log \
+    --error-logfile /weby/faktury.tmcm.cz/logs/error.log \
+    app.main:app
+
+# ── Lifecycle ─────────────────────────────────────────────────────────────────
+ExecReload=/bin/kill -s HUP $MAINPID
+KillMode=mixed
+TimeoutStopSec=10
+
+# ── Restart policy ────────────────────────────────────────────────────────────
+# Restart automatically on failure, but not on a clean exit (stop command).
+Restart=on-failure
+RestartSec=5s
+
+# ── Security hardening ────────────────────────────────────────────────────────
+# These do not affect functionality but significantly limit what a compromised
+# process can do.
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+# Allow writes only to the project directory (database, uploads), the log
+# directory, and the socket.
+ReadWritePaths=/weby/faktury.tmcm.cz/app /weby/faktury.tmcm.cz/logs /run/faktury
+ProtectHome=true
+ProtectKernelTunables=true
+ProtectControlGroups=true
+RestrictNamespaces=true
+LockPersonality=true
+
+[Install]
+WantedBy=multi-user.target
