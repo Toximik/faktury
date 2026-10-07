@@ -5,14 +5,14 @@
 
 <div class="max-w-lg mx-auto">
 
-  <div class="flex items-center justify-between mb-6">
-    <h1 class="text-2xl font-bold text-gray-800">
+  <div class="flex flex-wrap items-center justify-between gap-x-4 gap-y-3 mb-6">
+    <h1 class="text-xl sm:text-2xl font-bold text-gray-800">
       {% if contact %}Upravit kontakt{% else %}Nový kontakt{% endif %}
     </h1>
     <a href="/kontakty" class="text-sm text-gray-500 hover:text-gray-700 transition-colors">&larr; Zpět</a>
   </div>
 
-  <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+  <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-4 sm:p-6">
 
     <form method="post"
           action="{% if contact %}/ui/kontakty/{{ contact.id }}/upravit{% else %}/ui/kontakty/novy{% endif %}"
@@ -49,7 +49,7 @@
       </div>
 
       {# IČO + DIČ #}
-      <div class="grid grid-cols-2 gap-4">
+      <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <div>
           <label for="ic" class="block text-sm font-medium text-gray-700 mb-1">
             IČO <span class="text-red-500">*</span>
@@ -104,7 +104,7 @@
         <p class="block text-sm font-medium text-gray-700 mb-2">
           Bankovní účet <span class="text-gray-400 text-xs">(nepovinné)</span>
         </p>
-        <div class="grid grid-cols-3 gap-3 mb-3">
+        <div class="grid grid-cols-2 sm:grid-cols-3 gap-3 mb-3">
           <div>
             <label for="bank_prefix" class="block text-xs text-gray-500 mb-1">Předčíslí</label>
             <input type="text" id="bank_prefix" name="bank_prefix"
@@ -114,7 +114,7 @@
                           font-mono focus:outline-none focus:ring-2 focus:ring-blue-500
                           focus:border-blue-500">
           </div>
-          <div>
+          <div class="col-span-2 sm:col-span-1 order-first sm:order-none">
             <label for="bank_number" class="block text-xs text-gray-500 mb-1">Číslo účtu</label>
             <input type="text" id="bank_number" name="bank_number"
                    value="{{ (form.bank_number if form else (contact and contact.bank_number)) or '' }}"

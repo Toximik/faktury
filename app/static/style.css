@@ -39,3 +39,52 @@
   border-left: 4px solid #10b981;
   color: #064e3b;
 }
+
+/* ── Mobile (below Tailwind's sm breakpoint) ─────────────────────────────── */
+@media (max-width: 639px) {
+  /* iOS Safari zooms the page when focusing a field with font-size < 16px. */
+  input, select, textarea { font-size: 16px !important; }
+
+  /* Invoice form line items: each <tr> becomes a stacked card. Done in CSS so
+     the form's JS (which works on tbody > tr) needs no changes. Cells carry a
+     data-label that replaces the hidden <thead> captions. */
+  #items-table thead { display: none; }
+  #items-table, #items-table tbody, #items-table tfoot { display: block; width: 100%; }
+  #items-table tbody tr {
+    display: grid;
+    grid-template-columns: 5rem 4.5rem 1fr 2.25rem;
+    grid-template-areas:
+      "desc  desc  desc  rm"
+      "qty   unit  price price"
+      "total total total total";
+    gap: 0.5rem;
+    padding: 0.75rem 0;
+  }
+  #items-table tbody td { padding: 0 !important; }
+  #items-table tbody td:nth-child(1) { grid-area: desc; }
+  #items-table tbody td:nth-child(2) { grid-area: qty; }
+  #items-table tbody td:nth-child(3) { grid-area: unit; }
+  #items-table tbody td:nth-child(4) { grid-area: price; }
+  #items-table tbody td:nth-child(5) { grid-area: total; }
+  #items-table tbody td:nth-child(6) { grid-area: rm; align-self: center; }
+  #items-table tbody td[data-label]::before {
+    content: attr(data-label);
+    display: block;
+    font-size: 0.7rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+    color: #6b7280;   /* gray-500 */
+    margin-bottom: 0.15rem;
+    text-align: left;
+  }
+  #items-table tbody td:nth-child(5)::before { display: inline; margin-right: 0.5rem; }
+  #items-table tfoot tr { display: flex; justify-content: flex-end; align-items: baseline; gap: 0.75rem; }
+  #items-table tfoot td { display: block; }
+}
+
+/* Statistiky chart: the SVG scales down on phones, so enlarge its month
+   labels (font-size is in viewBox units) to stay legible. */
+@media (max-width: 639px) {
+  .chart-label { font-size: 17px; }
+}

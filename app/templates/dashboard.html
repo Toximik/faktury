@@ -7,8 +7,8 @@
 {# ══════════════════════════════════════════════════════════════
    PAGE HEADER
    ══════════════════════════════════════════════════════════════ #}
-<div class="flex items-center justify-between mb-6">
-  <h1 class="text-2xl font-bold text-gray-800">Přehled {{ current_year }}</h1>
+<div class="flex flex-wrap items-center justify-between gap-x-4 gap-y-3 mb-6">
+  <h1 class="text-xl sm:text-2xl font-bold text-gray-800">Přehled {{ current_year }}</h1>
   <a href="/faktury/nova"
      class="bg-blue-700 hover:bg-blue-800 text-white text-sm font-semibold
             px-4 py-2 rounded-md transition-colors">
@@ -19,10 +19,10 @@
 {# ══════════════════════════════════════════════════════════════
    SUMMARY CARDS
    ══════════════════════════════════════════════════════════════ #}
-<div class="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-8">
+<div class="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4 mb-6 sm:mb-8">
 
   {# Total invoiced (paid invoices only) #}
-  <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-5">
+  <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-4 sm:p-5">
     <p class="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">
       Příjmy (uhrazeno)
     </p>
@@ -33,7 +33,7 @@
   </div>
 
   {# Total expenses #}
-  <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-5">
+  <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-4 sm:p-5">
     <p class="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">
       Výdaje celkem
     </p>
@@ -44,7 +44,7 @@
   </div>
 
   {# Net (paid - expenses) #}
-  <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-5">
+  <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-4 sm:p-5">
     <p class="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">
       Zisk (příjmy – výdaje)
     </p>
@@ -52,7 +52,7 @@
     <p class="text-2xl font-bold {% if net >= 0 %}text-green-600{% else %}text-red-600{% endif %}">
       {{ net | money }}
     </p>
-    <p class="text-xs text-gray-400 mt-1">&nbsp;</p>
+    <p class="hidden sm:block text-xs text-gray-400 mt-1">&nbsp;</p>
   </div>
 
 </div>
@@ -61,7 +61,7 @@
    INVOICE TABLE
    ══════════════════════════════════════════════════════════════ #}
 <div class="bg-white rounded-lg shadow-sm border border-gray-200 mb-8">
-  <div class="flex items-center justify-between px-5 py-4 border-b border-gray-100">
+  <div class="flex items-center justify-between gap-3 px-4 sm:px-5 py-4 border-b border-gray-100">
     <h2 class="text-base font-semibold text-gray-700">Faktury {{ current_year }}</h2>
     <span class="text-xs text-gray-400">{{ invoices|length }} celkem</span>
   </div>
@@ -84,7 +84,7 @@
    RECENT EXPENSES
    ══════════════════════════════════════════════════════════════ #}
 <div class="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
-  <div class="flex items-center justify-between px-5 py-4 border-b border-gray-100">
+  <div class="flex items-center justify-between gap-3 px-4 sm:px-5 py-4 border-b border-gray-100">
     <h2 class="text-base font-semibold text-gray-700">Náklady {{ current_year }}</h2>
     <a href="/naklady/novy"
        class="text-sm text-blue-700 hover:text-blue-900 font-medium transition-colors">

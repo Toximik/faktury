@@ -20,6 +20,14 @@
   {# ══════════════════════════════════════════════════════════════
      NAVIGATION BAR
      ══════════════════════════════════════════════════════════════ #}
+  {% set main_nav = [
+       ("/", "dashboard", "Přehled"),
+       ("/faktury", "invoices", "Faktury"),
+       ("/naklady", "expenses", "Náklady"),
+       ("/kontakty", "contacts", "Kontakty"),
+       ("/statistiky", "stats", "Statistiky"),
+       ("/dane", "tax", "Daně"),
+     ] %}
   <nav class="bg-blue-700 text-white shadow-md no-print">
     <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
       <div class="flex items-center justify-between h-14">
@@ -57,40 +65,20 @@
             </div>
           </div>
 
-          <a href="/"
-             class="px-3 py-1.5 rounded text-sm font-medium hover:bg-blue-600 transition-colors
-                    {% if active_nav == 'dashboard' %}bg-blue-800{% endif %}">
-            Přehled
-          </a>
-          <a href="/faktury"
-             class="px-3 py-1.5 rounded text-sm font-medium hover:bg-blue-600 transition-colors
-                    {% if active_nav == 'invoices' %}bg-blue-800{% endif %}">
-            Faktury
-          </a>
-          <a href="/naklady"
-             class="px-3 py-1.5 rounded text-sm font-medium hover:bg-blue-600 transition-colors
-                    {% if active_nav == 'expenses' %}bg-blue-800{% endif %}">
-            Náklady
-          </a>
-          <a href="/kontakty"
-             class="px-3 py-1.5 rounded text-sm font-medium hover:bg-blue-600 transition-colors
-                    {% if active_nav == 'contacts' %}bg-blue-800{% endif %}">
-            Kontakty
-          </a>
-          <a href="/statistiky"
-             class="px-3 py-1.5 rounded text-sm font-medium hover:bg-blue-600 transition-colors
-                    {% if active_nav == 'stats' %}bg-blue-800{% endif %}">
-            Statistiky
-          </a>
-          <a href="/dane"
-             class="px-3 py-1.5 rounded text-sm font-medium hover:bg-blue-600 transition-colors
-                    {% if active_nav == 'tax' %}bg-blue-800{% endif %}">
-            Daně
-          </a>
+          {# Main links – inline from lg up; below lg they live in the hamburger panel #}
+          <div class="hidden lg:flex items-center gap-1">
+            {% for href, key, label in main_nav %}
+            <a href="{{ href }}"
+               class="px-3 py-1.5 rounded text-sm font-medium hover:bg-blue-600 transition-colors
+                      {% if active_nav == key %}bg-blue-800{% endif %}">
+              {{ label }}
+            </a>
+            {% endfor %}
+          </div>
         </div>
 
-        {# RIGHT: user-related #}
-        <div class="flex items-center gap-1">
+        {# RIGHT: user-related (lg+) #}
+        <div class="hidden lg:flex items-center gap-1">
           <a href="/ucet"
              class="px-3 py-1.5 rounded text-sm font-medium hover:bg-blue-600 transition-colors
                     {% if active_nav == 'account' %}bg-blue-800{% endif %}">
@@ -116,6 +104,50 @@
           </form>
         </div>
 
+        {# Hamburger (below lg) #}
+        <button type="button" id="nav-toggle" aria-label="Menu" aria-expanded="false"
+                aria-controls="nav-mobile"
+                class="lg:hidden inline-flex items-center justify-center w-10 h-10 rounded
+                       hover:bg-blue-600 transition-colors">
+          <svg class="w-6 h-6" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+               stroke-width="2" stroke-linecap="round">
+            <path d="M4 6h16M4 12h16M4 18h16"/>
+          </svg>
+        </button>
+
+      </div>
+    </div>
+
+    {# Mobile menu panel (below lg), toggled by #nav-toggle #}
+    <div id="nav-mobile" class="hidden lg:hidden border-t border-blue-600">
+      <div class="px-4 py-2 space-y-1">
+        {% for href, key, label in main_nav %}
+        <a href="{{ href }}"
+           class="block px-3 py-2.5 rounded text-base font-medium hover:bg-blue-600 transition-colors
+                  {% if active_nav == key %}bg-blue-800{% endif %}">
+          {{ label }}
+        </a>
+        {% endfor %}
+        <div class="border-t border-blue-600 my-2"></div>
+        <a href="/ucet"
+           class="block px-3 py-2.5 rounded text-base font-medium hover:bg-blue-600 transition-colors
+                  {% if active_nav == 'account' %}bg-blue-800{% endif %}">
+          Účet
+        </a>
+        {% if current_user and current_user.is_admin %}
+        <a href="/admin/uzivatele"
+           class="block px-3 py-2.5 rounded text-base font-medium hover:bg-blue-600 transition-colors text-yellow-300
+                  {% if active_nav == 'admin' %}bg-blue-800{% endif %}">
+          Admin
+        </a>
+        {% endif %}
+        <form method="post" action="/logout">
+          <button type="submit"
+                  class="block w-full text-left px-3 py-2.5 rounded text-base font-medium
+                         hover:bg-red-600 transition-colors text-blue-200 hover:text-white">
+            Odhlásit
+          </button>
+        </form>
       </div>
     </div>
   </nav>
@@ -142,7 +174,7 @@
   {# ══════════════════════════════════════════════════════════════
      PAGE CONTENT
      ══════════════════════════════════════════════════════════════ #}
-  <main class="flex-1 max-w-6xl mx-auto w-full px-4 sm:px-6 lg:px-8 py-8">
+  <main class="flex-1 max-w-6xl mx-auto w-full px-4 sm:px-6 lg:px-8 py-5 sm:py-8">
     {% block content %}{% endblock %}
   </main>
 
@@ -170,6 +202,16 @@
     if (e.key === "Escape")
       document.querySelectorAll(".kebab-menu").forEach((m) => m.classList.add("hidden"));
   });
+
+  // Hamburger menu (below lg)
+  const navToggle = document.getElementById("nav-toggle");
+  if (navToggle) {
+    navToggle.addEventListener("click", () => {
+      const panel = document.getElementById("nav-mobile");
+      const open = panel.classList.toggle("hidden") === false;
+      navToggle.setAttribute("aria-expanded", String(open));
+    });
+  }
   </script>
 
   {% block scripts %}{% endblock %}

@@ -5,10 +5,28 @@
 {{ value | money }}
 {%- endmacro %}
 
+{# Phone layout (below sm) of one month / the total: the three amounts stacked
+   as a small label–value list, so even 7-digit sums fit the screen width. #}
+{% macro stacked(inv, exp, diff, strong=false) -%}
+{% if not inv and not exp %}
+<span class="text-gray-300">—</span>
+{% else %}
+<dl class="inline-grid grid-cols-[auto_auto] gap-x-3 gap-y-0.5 text-right">
+  <dt class="text-xs text-gray-400 self-center">Faktury</dt>
+  <dd class="tabular-nums text-gray-800">{{ czk(inv) }}</dd>
+  <dt class="text-xs text-gray-400 self-center">Náklady</dt>
+  <dd class="tabular-nums text-gray-800">{{ czk(exp) }}</dd>
+  <dt class="text-xs text-gray-400 self-center">Rozdíl</dt>
+  <dd class="tabular-nums {{ 'font-semibold' if strong else 'font-medium' }}
+             {% if diff < 0 %}text-red-600{% else %}text-green-700{% endif %}">{{ czk(diff) }}</dd>
+</dl>
+{% endif %}
+{%- endmacro %}
+
 {% block content %}
 
-<div class="flex items-center justify-between mb-6">
-  <h1 class="text-2xl font-bold text-gray-800">Statistiky</h1>
+<div class="flex flex-wrap items-center justify-between gap-x-4 gap-y-3 mb-6">
+  <h1 class="text-xl sm:text-2xl font-bold text-gray-800">Statistiky</h1>
   <a href="/export/{{ selected_year }}?date_field={{ date_field }}"
      class="bg-blue-700 hover:bg-blue-800 text-white text-sm font-semibold
             px-4 py-2 rounded-md transition-colors">
@@ -20,7 +38,7 @@
 
   {# Filters #}
   <form method="get" action="/statistiky"
-        class="flex flex-wrap items-center gap-6 px-5 py-4 border-b border-gray-100">
+        class="flex flex-wrap items-center gap-x-6 gap-y-3 px-4 sm:px-5 py-4 border-b border-gray-100">
     <label class="flex items-center gap-2 text-sm text-gray-600">
       Rok
       <select name="year" onchange="this.form.submit()"
@@ -47,7 +65,7 @@
   </form>
 
   {# Chart: monthly income vs expenses with a profit trend line #}
-  <div class="px-5 py-5 border-b border-gray-100">
+  <div class="px-4 sm:px-5 py-5 border-b border-gray-100">
     <div class="flex flex-wrap items-center gap-5 mb-4 text-xs text-gray-600">
       <span class="flex items-center gap-1.5">
         <span class="inline-block w-3 h-3 rounded-sm bg-green-600"></span> Faktury
@@ -64,7 +82,7 @@
     <div class="overflow-x-auto">
       <svg viewBox="0 0 {{ chart.width }} {{ chart.height }}" width="100%"
            preserveAspectRatio="xMidYMid meet"
-           class="min-w-[560px] max-w-[720px] mx-auto block" role="img"
+           class="min-w-[300px] max-w-[720px] mx-auto block" role="img"
            aria-label="Měsíční přehled faktur, nákladů a zisku">
         {# zero reference line #}
         <line x1="0" y1="{{ '%.1f'|format(chart.zero_y) }}"
@@ -83,7 +101,7 @@
             <title>{{ b.name }} — Náklady: {{ czk(b.expenses) }}</title>
           </rect>
           <text x="{{ '%.1f'|format(b.cx) }}" y="{{ chart.label_y }}"
-                text-anchor="middle" font-size="10" fill="#9ca3af">{{ b.short }}</text>
+                text-anchor="middle" font-size="10" fill="#9ca3af" class="chart-label">{{ b.short }}</text>
         </g>
         {% endfor %}
         {# profit trend line + points #}
@@ -103,9 +121,10 @@
     {% endif %}
   </div>
 
+  {# From sm up: 4-column table. Below sm: month + stacked amounts (2 columns). #}
   <div class="overflow-x-auto">
-    <table class="min-w-full text-sm">
-      <thead>
+    <table class="min-w-full text-sm whitespace-nowrap">
+      <thead class="hidden sm:table-header-group">
         <tr class="text-left text-gray-500 border-b border-gray-100">
           <th class="px-5 py-3 font-medium">Měsíc</th>
           <th class="px-5 py-3 font-medium text-right">Faktury</th>
@@ -116,10 +135,11 @@
       <tbody>
         {% for row in rows %}
         <tr class="border-b border-gray-50 hover:bg-gray-50">
-          <td class="px-5 py-2.5 text-gray-700">{{ row.name }}</td>
-          <td class="px-5 py-2.5 text-right tabular-nums text-gray-800">{{ czk(row.invoices) }}</td>
-          <td class="px-5 py-2.5 text-right tabular-nums text-gray-800">{{ czk(row.expenses) }}</td>
-          <td class="px-5 py-2.5 text-right tabular-nums font-medium
+          <td class="px-4 sm:px-5 py-2.5 text-gray-700 align-top sm:align-middle">{{ row.name }}</td>
+          <td class="sm:hidden px-4 py-2.5 text-right">{{ stacked(row.invoices, row.expenses, row.diff) }}</td>
+          <td class="hidden sm:table-cell px-5 py-2.5 text-right tabular-nums text-gray-800">{{ czk(row.invoices) }}</td>
+          <td class="hidden sm:table-cell px-5 py-2.5 text-right tabular-nums text-gray-800">{{ czk(row.expenses) }}</td>
+          <td class="hidden sm:table-cell px-5 py-2.5 text-right tabular-nums font-medium
                      {% if row.diff < 0 %}text-red-600{% else %}text-green-700{% endif %}">
             {{ czk(row.diff) }}
           </td>
@@ -128,10 +148,11 @@
       </tbody>
       <tfoot>
         <tr class="border-t-2 border-gray-200 bg-gray-50 font-semibold text-gray-800">
-          <td class="px-5 py-3">Celkem {{ selected_year }}</td>
-          <td class="px-5 py-3 text-right tabular-nums">{{ czk(totals.invoices) }}</td>
-          <td class="px-5 py-3 text-right tabular-nums">{{ czk(totals.expenses) }}</td>
-          <td class="px-5 py-3 text-right tabular-nums
+          <td class="px-4 sm:px-5 py-3 align-top sm:align-middle">Celkem {{ selected_year }}</td>
+          <td class="sm:hidden px-4 py-3 text-right">{{ stacked(totals.invoices, totals.expenses, totals.diff, strong=true) }}</td>
+          <td class="hidden sm:table-cell px-5 py-3 text-right tabular-nums">{{ czk(totals.invoices) }}</td>
+          <td class="hidden sm:table-cell px-5 py-3 text-right tabular-nums">{{ czk(totals.expenses) }}</td>
+          <td class="hidden sm:table-cell px-5 py-3 text-right tabular-nums
                      {% if totals.diff < 0 %}text-red-600{% else %}text-green-700{% endif %}">
             {{ czk(totals.diff) }}
           </td>

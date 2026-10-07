@@ -7,12 +7,12 @@
 <div class="max-w-4xl mx-auto">
 
   {# ── Header ───────────────────────────────────────────────────────────── #}
-  <div class="flex items-start justify-between mb-6">
+  <div class="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4 mb-6">
     <div>
       <p class="text-sm text-gray-400 mb-1">
         <a href="/" class="hover:text-gray-600 transition-colors">&larr; Přehled</a>
       </p>
-      <h1 class="text-2xl font-bold text-gray-800">
+      <h1 class="text-xl sm:text-2xl font-bold text-gray-800">
         {{ 'Dobropis' if is_credit else 'Faktura' }} {{ invoice.variable_symbol }}
       </h1>
       {% if is_credit %}
@@ -25,7 +25,7 @@
       </p>
       {% endif %}
     </div>
-    <div class="flex gap-2">
+    <div class="flex flex-wrap gap-2">
       {% if not invoice.is_paid %}
       <form method="post" action="/ui/faktury/{{ invoice.id }}/smazat"
             onsubmit="return confirm('Opravdu smazat {{ 'dobropis' if is_credit else 'fakturu' }} {{ invoice.variable_symbol }}? Číslo v řadě zůstane vynechané, pokud nejde o poslední doklad.')">
@@ -58,9 +58,9 @@
   </div>
 
   {# ── Status + dates card ──────────────────────────────────────────────── #}
-  <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-4">
+  <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-4 sm:p-6 mb-4">
 
-    <div class="grid grid-cols-2 sm:grid-cols-4 gap-6 mb-5">
+    <div class="grid grid-cols-2 sm:grid-cols-4 gap-4 sm:gap-6 mb-5">
 
       <div>
         <p class="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">Stav</p>
@@ -184,31 +184,31 @@
         Platební údaje
       </h2>
       <dl class="space-y-1.5 text-sm">
-        <div class="flex justify-between">
+        <div class="flex justify-between gap-4">
           <dt class="text-gray-500">Způsob úhrady</dt>
           <dd class="font-semibold text-gray-800">
             {{ 'Hotově' if invoice.payment_method == 'cash' else 'Převodem' }}
           </dd>
         </div>
-        <div class="flex justify-between">
+        <div class="flex justify-between gap-4">
           <dt class="text-gray-500">Variabilní symbol</dt>
           <dd class="font-mono font-semibold text-gray-800">{{ invoice.variable_symbol }}</dd>
         </div>
         {% if invoice.payment_method != 'cash' %}
         {% if supplier and supplier.bank_account %}
-        <div class="flex justify-between">
+        <div class="flex justify-between gap-4">
           <dt class="text-gray-500">Číslo účtu</dt>
           <dd class="font-mono text-gray-700">{{ supplier.bank_account }}</dd>
         </div>
         {% endif %}
         {% if supplier and supplier.bank_iban %}
-        <div class="flex justify-between">
+        <div class="flex justify-between gap-4">
           <dt class="text-gray-500">IBAN</dt>
-          <dd class="font-mono text-gray-700 text-xs">{{ supplier.bank_iban }}</dd>
+          <dd class="font-mono text-gray-700 text-xs text-right break-all">{{ supplier.bank_iban }}</dd>
         </div>
         {% endif %}
         {% endif %}
-        <div class="flex justify-between">
+        <div class="flex justify-between gap-4">
           <dt class="text-gray-500">Měna</dt>
           <dd class="font-semibold text-gray-800">{{ invoice.currency | currency }}</dd>
         </div>
@@ -236,12 +236,13 @@
       <table class="w-full text-sm text-left">
         <thead class="bg-gray-50 text-xs font-semibold text-gray-500 uppercase tracking-wide">
           <tr>
-            <th class="px-5 py-3">Popis</th>
-            <th class="px-3 py-3 text-right">Množství</th>
-            <th class="px-3 py-3">Jedn.</th>
-            <th class="px-3 py-3 text-right">Jedn. cena</th>
-            <th class="px-3 py-3 text-right">DPH</th>
-            <th class="px-5 py-3 text-right">Celkem</th>
+            {# Below sm: Jedn. folds into Množství and DPH (always 0 %) is hidden. #}
+            <th class="px-3 sm:px-5 py-3">Popis</th>
+            <th class="px-2 sm:px-3 py-3 text-right"><span class="sm:hidden">Množ.</span><span class="hidden sm:inline">Množství</span></th>
+            <th class="hidden sm:table-cell px-3 py-3">Jedn.</th>
+            <th class="px-2 sm:px-3 py-3 text-right"><span class="sm:hidden">Cena</span><span class="hidden sm:inline">Jedn. cena</span></th>
+            <th class="hidden sm:table-cell px-3 py-3 text-right">DPH</th>
+            <th class="px-3 sm:px-5 py-3 text-right">Celkem</th>
           </tr>
         </thead>
         <tbody class="divide-y divide-gray-100">
@@ -250,16 +251,18 @@
           {% set vat_amt  = subtotal * item.vat_rate %}
           {% set row_total = subtotal + vat_amt %}
           <tr>
-            <td class="px-5 py-3 text-gray-800">{{ item.description }}</td>
-            <td class="px-3 py-3 text-right text-gray-600">{{ item.quantity }}</td>
-            <td class="px-3 py-3 text-gray-500">{{ item.unit | default('ks') }}</td>
-            <td class="px-3 py-3 text-right font-mono text-gray-700">
+            <td class="px-3 sm:px-5 py-3 text-gray-800 break-words">{{ item.description }}</td>
+            <td class="px-2 sm:px-3 py-3 text-right text-gray-600 whitespace-nowrap">
+              {{ item.quantity }}<span class="sm:hidden text-gray-500"> {{ item.unit | default('ks') }}</span>
+            </td>
+            <td class="hidden sm:table-cell px-3 py-3 text-gray-500">{{ item.unit | default('ks') }}</td>
+            <td class="px-2 sm:px-3 py-3 text-right font-mono text-gray-700 whitespace-nowrap">
               {{ item.unit_price | amount }}
             </td>
-            <td class="px-3 py-3 text-right text-gray-500">
+            <td class="hidden sm:table-cell px-3 py-3 text-right text-gray-500">
               {{ (item.vat_rate * 100)|int }} %
             </td>
-            <td class="px-5 py-3 text-right font-semibold text-gray-800 font-mono">
+            <td class="px-3 sm:px-5 py-3 text-right font-semibold text-gray-800 font-mono whitespace-nowrap">
               {{ row_total | amount }}
             </td>
           </tr>
@@ -267,10 +270,14 @@
         </tbody>
         <tfoot>
           <tr class="border-t-2 border-gray-300 bg-gray-50">
-            <td colspan="5" class="px-5 py-3 text-right font-semibold text-gray-700">
+            {# Two label cells: the colspan must match the visible column count. #}
+            <td colspan="3" class="sm:hidden px-3 py-3 text-right font-semibold text-gray-700">
               {{ 'Celkem k vrácení:' if is_credit else 'Celkem k úhradě:' }}
             </td>
-            <td class="px-5 py-3 text-right font-bold text-blue-700 text-base font-mono">
+            <td colspan="5" class="hidden sm:table-cell px-5 py-3 text-right font-semibold text-gray-700">
+              {{ 'Celkem k vrácení:' if is_credit else 'Celkem k úhradě:' }}
+            </td>
+            <td class="px-3 sm:px-5 py-3 text-right font-bold text-blue-700 text-base font-mono whitespace-nowrap">
               {{ invoice.amount | money(invoice.currency) }}
             </td>
           </tr>

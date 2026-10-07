@@ -12,17 +12,17 @@
 {# Vyměřovací základ + estimated premium – shared by the main and secondary branches #}
 {% macro social_estimate(summary, assessment_rate_pct, insurance_rate_pct) -%}
 <div class="border-t border-gray-100 pt-4 space-y-2">
-  <div class="flex items-center justify-between">
+  <div class="flex items-center justify-between gap-4">
     <span class="text-gray-600">Vyměřovací základ
       <span class="text-xs text-gray-400">({{ pct(assessment_rate_pct) }} základu daně)</span>
     </span>
-    <span class="tabular-nums text-gray-800">{{ czk(summary.social_assessment_base) }}</span>
+    <span class="tabular-nums whitespace-nowrap text-gray-800">{{ czk(summary.social_assessment_base) }}</span>
   </div>
-  <div class="flex items-center justify-between font-semibold text-gray-900">
+  <div class="flex items-center justify-between gap-4 font-semibold text-gray-900">
     <span>Odhad pojistného
       <span class="text-xs font-normal text-gray-400">({{ pct(insurance_rate_pct) }})</span>
     </span>
-    <span class="tabular-nums">{{ czk(summary.social_insurance) }}</span>
+    <span class="tabular-nums whitespace-nowrap">{{ czk(summary.social_insurance) }}</span>
   </div>
   <p class="text-xs text-gray-400 pt-1">
     Roční odhad. Skutečná výše může být ovlivněna minimálním vyměřovacím
@@ -33,19 +33,19 @@
 
 {% block content %}
 
-<div class="flex items-center justify-between mb-6">
-  <h1 class="text-2xl font-bold text-gray-800">Daňové přiznání</h1>
+<div class="flex flex-wrap items-center justify-between gap-x-4 gap-y-3 mb-6">
+  <h1 class="text-xl sm:text-2xl font-bold text-gray-800">Daňové přiznání</h1>
 </div>
 
 {# ── Filters ── #}
 <div class="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden mb-6">
   <form method="get" action="/dane"
-        class="flex flex-wrap items-end gap-6 px-5 py-4">
+        class="flex flex-wrap items-end gap-x-6 gap-y-3 px-4 sm:px-5 py-4">
 
-    <label class="flex flex-col gap-1 text-sm text-gray-600">
+    <label class="flex flex-col gap-1 text-sm text-gray-600 max-w-full">
       Rok
       <select name="year" onchange="this.form.submit()"
-              class="border border-gray-300 rounded-md px-2 py-1.5 text-sm bg-white
+              class="max-w-full border border-gray-300 rounded-md px-2 py-1.5 text-sm bg-white
                      focus:outline-none focus:ring-2 focus:ring-blue-500">
         {% for y in years %}
         <option value="{{ y }}" {% if selected_year == y %}selected{% endif %}>{{ y }}</option>
@@ -56,32 +56,32 @@
       </select>
     </label>
 
-    <label class="flex flex-col gap-1 text-sm text-gray-600">
+    <label class="flex flex-col gap-1 text-sm text-gray-600 max-w-full">
       Příjmy podle
       <select name="date_field" onchange="this.form.submit()"
-              class="border border-gray-300 rounded-md px-2 py-1.5 text-sm bg-white
+              class="max-w-full border border-gray-300 rounded-md px-2 py-1.5 text-sm bg-white
                      focus:outline-none focus:ring-2 focus:ring-blue-500">
         <option value="paid"   {% if date_field == "paid"   %}selected{% endif %}>data zaplacení</option>
         <option value="issued" {% if date_field == "issued" %}selected{% endif %}>data vystavení</option>
       </select>
     </label>
 
-    <label class="flex flex-col gap-1 text-sm text-gray-600">
+    <label class="flex flex-col gap-1 text-sm text-gray-600 max-w-full">
       Výdaje
       <select name="expense_mode" onchange="this.form.submit()"
-              class="border border-gray-300 rounded-md px-2 py-1.5 text-sm bg-white
+              class="max-w-full border border-gray-300 rounded-md px-2 py-1.5 text-sm bg-white
                      focus:outline-none focus:ring-2 focus:ring-blue-500">
         <option value="real" {% if expense_mode == "real" %}selected{% endif %}>skutečné výdaje</option>
         <option value="flat" {% if expense_mode == "flat" %}selected{% endif %}>paušálem z příjmů</option>
       </select>
     </label>
 
-    <label class="flex flex-col gap-1 text-sm text-gray-600
+    <label class="flex flex-col gap-1 text-sm text-gray-600 max-w-full
                   {% if expense_mode != 'flat' %}opacity-40{% endif %}">
       Sazba paušálu
       <select name="flat_rate" onchange="this.form.submit()"
               {% if expense_mode != 'flat' %}disabled{% endif %}
-              class="border border-gray-300 rounded-md px-2 py-1.5 text-sm bg-white
+              class="max-w-full border border-gray-300 rounded-md px-2 py-1.5 text-sm bg-white
                      focus:outline-none focus:ring-2 focus:ring-blue-500">
         {% for pct, cap, label in flat_rates %}
         <option value="{{ pct }}" {% if flat_rate == pct %}selected{% endif %}>{{ label }}</option>
@@ -95,38 +95,38 @@
 
   {# ── Income-tax estimate ── #}
   <div class="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
-    <div class="px-5 py-4 border-b border-gray-100">
+    <div class="px-4 sm:px-5 py-4 border-b border-gray-100">
       <h2 class="text-base font-semibold text-gray-700">Odhad daně z příjmů {{ selected_year }}</h2>
     </div>
     <table class="w-full text-sm">
       <tbody>
         <tr class="border-b border-gray-50">
-          <td class="px-5 py-3 text-gray-600">Příjmy</td>
-          <td class="px-5 py-3 text-right tabular-nums text-gray-800">{{ czk(summary.income) }}</td>
+          <td class="px-4 sm:px-5 py-3 text-gray-600">Příjmy</td>
+          <td class="px-4 sm:px-5 py-3 text-right tabular-nums whitespace-nowrap text-gray-800">{{ czk(summary.income) }}</td>
         </tr>
         <tr class="border-b border-gray-50">
-          <td class="px-5 py-3 text-gray-600">
+          <td class="px-4 sm:px-5 py-3 text-gray-600">
             Výdaje
             <span class="text-xs text-gray-400">
               ({% if expense_mode == 'flat' %}paušál {{ flat_rate }} %{% else %}skutečné{% endif %})
             </span>
           </td>
-          <td class="px-5 py-3 text-right tabular-nums text-gray-800">− {{ czk(summary.expenses) }}</td>
+          <td class="px-4 sm:px-5 py-3 text-right tabular-nums whitespace-nowrap text-gray-800">−&nbsp;{{ czk(summary.expenses) }}</td>
         </tr>
         <tr class="border-b border-gray-100 bg-gray-50 font-semibold text-gray-800">
-          <td class="px-5 py-3">Základ daně</td>
-          <td class="px-5 py-3 text-right tabular-nums">{{ czk(summary.tax_base) }}</td>
+          <td class="px-4 sm:px-5 py-3">Základ daně</td>
+          <td class="px-4 sm:px-5 py-3 text-right tabular-nums whitespace-nowrap">{{ czk(summary.tax_base) }}</td>
         </tr>
         <tr class="border-t-2 border-gray-200 bg-gray-50 font-bold text-gray-900">
-          <td class="px-5 py-3">
+          <td class="px-4 sm:px-5 py-3">
             Daň z příjmů {{ pct(tax_rate_pct) }}
             <span class="text-xs font-normal text-gray-400">(ze základu zaokr. na sta dolů)</span>
           </td>
-          <td class="px-5 py-3 text-right tabular-nums">{{ czk(summary.tax) }}</td>
+          <td class="px-4 sm:px-5 py-3 text-right tabular-nums whitespace-nowrap">{{ czk(summary.tax) }}</td>
         </tr>
       </tbody>
     </table>
-    <p class="px-5 py-3 text-xs text-gray-400 border-t border-gray-100">
+    <p class="px-4 sm:px-5 py-3 text-xs text-gray-400 border-t border-gray-100">
       Orientační odhad pro neplátce DPH na vedlejší činnost. Neobsahuje slevu na
       poplatníka (uplatňuje se u hlavního zaměstnání) ani progresivní sazbu
       23&nbsp;% u vysokých příjmů.
@@ -135,18 +135,18 @@
 
   {# ── Social-insurance threshold (vedlejší činnost) ── #}
   <div class="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
-    <div class="px-5 py-4 border-b border-gray-100">
+    <div class="px-4 sm:px-5 py-4 border-b border-gray-100">
       <h2 class="text-base font-semibold text-gray-700">
         Sociální pojištění – {% if activity_type == 'main' %}hlavní{% else %}vedlejší{% endif %} činnost
       </h2>
     </div>
-    <div class="px-5 py-4 space-y-4 text-sm">
+    <div class="px-4 sm:px-5 py-4 space-y-4 text-sm">
 
       {% if activity_type == 'main' %}
       {# ── Hlavní činnost: pojistné se platí vždy ── #}
-      <div class="flex items-center justify-between">
+      <div class="flex items-center justify-between gap-4">
         <span class="text-gray-600">Tvůj základ daně</span>
-        <span class="tabular-nums text-gray-800 font-medium">{{ czk(summary.tax_base) }}</span>
+        <span class="tabular-nums whitespace-nowrap text-gray-800 font-medium">{{ czk(summary.tax_base) }}</span>
       </div>
       <div class="rounded-md bg-blue-50 border border-blue-200 px-4 py-3 text-blue-800">
         <p class="font-semibold mb-1">Povinné důchodové pojištění.</p>
@@ -160,13 +160,13 @@
       {% else %}
       {# ── Vedlejší činnost: účast až od rozhodné částky ── #}
       {% if has_threshold %}
-      <div class="flex items-center justify-between">
+      <div class="flex items-center justify-between gap-4">
         <span class="text-gray-600">Rozhodná částka {{ selected_year }}</span>
-        <span class="tabular-nums text-gray-800 font-medium">{{ czk(summary.social_threshold) }}</span>
+        <span class="tabular-nums whitespace-nowrap text-gray-800 font-medium">{{ czk(summary.social_threshold) }}</span>
       </div>
-      <div class="flex items-center justify-between">
+      <div class="flex items-center justify-between gap-4">
         <span class="text-gray-600">Tvůj základ daně</span>
-        <span class="tabular-nums text-gray-800 font-medium">{{ czk(summary.tax_base) }}</span>
+        <span class="tabular-nums whitespace-nowrap text-gray-800 font-medium">{{ czk(summary.tax_base) }}</span>
       </div>
 
       {% if summary.social_participation %}
@@ -191,14 +191,14 @@
       {# How much more can still be earned before the obligation begins #}
       {% if summary.income_limit is not none %}
       <div class="border-t border-gray-100 pt-4 space-y-2">
-        <div class="flex items-center justify-between">
+        <div class="flex items-center justify-between gap-4">
           <span class="text-gray-600">Pojištění začneš platit při příjmech od</span>
-          <span class="tabular-nums text-gray-800 font-medium">{{ czk(summary.income_limit) }}</span>
+          <span class="tabular-nums whitespace-nowrap text-gray-800 font-medium">{{ czk(summary.income_limit) }}</span>
         </div>
         {% if not summary.social_participation %}
-        <div class="flex items-center justify-between">
+        <div class="flex items-center justify-between gap-4">
           <span class="text-gray-600">Ještě můžeš vydělat</span>
-          <span class="tabular-nums text-green-700 font-medium">{{ czk(summary.income_headroom) }}</span>
+          <span class="tabular-nums whitespace-nowrap text-green-700 font-medium">{{ czk(summary.income_headroom) }}</span>
         </div>
         {% endif %}
         <p class="text-xs text-gray-400 pt-1">
@@ -226,13 +226,13 @@
 
   {# ── Zdravotní pojištění (owed on any profit, main or secondary) ── #}
   <div class="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
-    <div class="px-5 py-4 border-b border-gray-100">
+    <div class="px-4 sm:px-5 py-4 border-b border-gray-100">
       <h2 class="text-base font-semibold text-gray-700">Zdravotní pojištění</h2>
     </div>
-    <div class="px-5 py-4 space-y-4 text-sm">
-      <div class="flex items-center justify-between">
+    <div class="px-4 sm:px-5 py-4 space-y-4 text-sm">
+      <div class="flex items-center justify-between gap-4">
         <span class="text-gray-600">Tvůj základ daně</span>
-        <span class="tabular-nums text-gray-800 font-medium">{{ czk(summary.tax_base) }}</span>
+        <span class="tabular-nums whitespace-nowrap text-gray-800 font-medium">{{ czk(summary.tax_base) }}</span>
       </div>
       <div class="rounded-md bg-blue-50 border border-blue-200 px-4 py-3 text-blue-800">
         <p class="text-blue-700">
@@ -241,17 +241,17 @@
         </p>
       </div>
       <div class="border-t border-gray-100 pt-4 space-y-2">
-        <div class="flex items-center justify-between">
+        <div class="flex items-center justify-between gap-4">
           <span class="text-gray-600">Vyměřovací základ
             <span class="text-xs text-gray-400">({{ pct(health_assessment_rate_pct) }} základu daně)</span>
           </span>
-          <span class="tabular-nums text-gray-800">{{ czk(summary.health_assessment_base) }}</span>
+          <span class="tabular-nums whitespace-nowrap text-gray-800">{{ czk(summary.health_assessment_base) }}</span>
         </div>
-        <div class="flex items-center justify-between font-semibold text-gray-900">
+        <div class="flex items-center justify-between gap-4 font-semibold text-gray-900">
           <span>Odhad pojistného
             <span class="text-xs font-normal text-gray-400">({{ pct(health_insurance_rate_pct) }})</span>
           </span>
-          <span class="tabular-nums">{{ czk(summary.health_insurance) }}</span>
+          <span class="tabular-nums whitespace-nowrap">{{ czk(summary.health_insurance) }}</span>
         </div>
         <p class="text-xs text-gray-400 pt-1">
           Roční odhad. U hlavní činnosti platí minimální vyměřovací základ, takže
