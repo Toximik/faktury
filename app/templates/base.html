@@ -7,10 +7,10 @@
 
   {# Self-hosted, pre-compiled Tailwind (CDN-free). Regenerate with the
      command in tailwind.config.js after changing template classes. #}
-  <link rel="stylesheet" href="/static/css/tailwind.css">
+  <link rel="stylesheet" href="{{ static_url('css/tailwind.css') }}">
 
   {# Local overrides – minimal, see app/static/style.css #}
-  <link rel="stylesheet" href="/static/style.css">
+  <link rel="stylesheet" href="{{ static_url('style.css') }}">
 
   {% block head %}{% endblock %}
 </head>

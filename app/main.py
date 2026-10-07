@@ -19,6 +19,7 @@ from __future__ import annotations
 from contextlib import asynccontextmanager
 from datetime import date, timedelta
 from decimal import Decimal
+import hashlib
 from pathlib import Path
 from types import SimpleNamespace
 from typing import AsyncGenerator, Optional
@@ -158,6 +159,28 @@ templates.env.globals["currency_symbol"] = currency_symbol
 #   {{ amount | amount }}         -> "1 500,00"       (digits only, no symbol)
 templates.env.filters["money"] = format_money
 templates.env.filters["amount"] = format_amount
+
+_static_hashes: dict[str, str] = {}
+
+
+def _static_url(path: str) -> str:
+    """URL of a file under app/static/ with a content-hash cache buster.
+
+    Nginx serves /static/ with a 30-day ``immutable`` cache, so the URL must
+    change whenever the file does: ``static_url('style.css')`` →
+    ``/static/style.css?v=<hash>``. Hashed once per process (files only change
+    on deploy, which restarts the app).
+    """
+    if path not in _static_hashes:
+        try:
+            data = (_APP_DIR / "static" / path).read_bytes()
+            _static_hashes[path] = hashlib.sha256(data).hexdigest()[:10]
+        except OSError:
+            _static_hashes[path] = ""
+    v = _static_hashes[path]
+    return f"/static/{path}?v={v}" if v else f"/static/{path}"
+
+templates.env.globals["static_url"] = _static_url
 
 # ── JSON API routers ──────────────────────────────────────────────────────────
 
