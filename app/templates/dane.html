@@ -71,16 +71,17 @@
       <select name="expense_mode" onchange="this.form.submit()"
               class="max-w-full border border-gray-300 rounded-md px-2 py-1.5 text-sm bg-white
                      focus:outline-none focus:ring-2 focus:ring-blue-500">
-        <option value="real" {% if expense_mode == "real" %}selected{% endif %}>skutečné výdaje</option>
-        <option value="flat" {% if expense_mode == "flat" %}selected{% endif %}>paušálem z příjmů</option>
+        <option value="auto" {% if expense_choice == "auto" %}selected{% endif %}>automaticky (výhodnější)</option>
+        <option value="real" {% if expense_choice == "real" %}selected{% endif %}>skutečné výdaje</option>
+        <option value="flat" {% if expense_choice == "flat" %}selected{% endif %}>paušálem z příjmů</option>
       </select>
     </label>
 
     <label class="flex flex-col gap-1 text-sm text-gray-600 max-w-full
-                  {% if expense_mode != 'flat' %}opacity-40{% endif %}">
+                  {% if expense_choice == 'real' %}opacity-40{% endif %}">
       Sazba paušálu
       <select name="flat_rate" onchange="this.form.submit()"
-              {% if expense_mode != 'flat' %}disabled{% endif %}
+              {% if expense_choice == 'real' %}disabled{% endif %}
               class="max-w-full border border-gray-300 rounded-md px-2 py-1.5 text-sm bg-white
                      focus:outline-none focus:ring-2 focus:ring-blue-500">
         {% for pct, cap, label in flat_rates %}
@@ -89,6 +90,16 @@
       </select>
     </label>
   </form>
+  {% if expense_choice == "auto" %}
+  <p class="px-4 sm:px-5 py-3 text-sm text-gray-600 border-t border-gray-100 bg-blue-50">
+    {% if expense_mode == "flat" %}
+    Automaticky vybrán <strong>paušál {{ flat_rate }} %</strong> ({{ czk(summary.expenses) }}) – vychází výš než skutečné výdaje ({{ czk(real_expenses) }}).
+    {% else %}
+    Automaticky vybrány <strong>skutečné výdaje</strong> ({{ czk(summary.expenses) }}) – vycházejí výš než paušál {{ flat_rate }} %.
+    {% endif %}
+    {% if auto_saving and auto_saving > 0 %}Daň a pojistné jsou tak nižší o {{ czk(auto_saving) }}.{% endif %}
+  </p>
+  {% endif %}
 </div>
 
 <div class="grid gap-6 md:grid-cols-2">

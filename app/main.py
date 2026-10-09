@@ -974,7 +974,7 @@ def ui_tax(
     _user: User = Depends(_get_ui_user),
     year: Optional[int] = None,
     date_field: str = "paid",
-    expense_mode: str = "real",
+    expense_mode: str = "auto",
     flat_rate: int = DEFAULT_FLAT_RATE_PERCENT,
 ) -> Response:
     """Estimate the yearly income-tax position of an OSVČ.
@@ -982,14 +982,17 @@ def ui_tax(
     Income is the sum of invoices for the year (by ``date_paid`` of paid
     invoices — the cash-basis default — or by ``date_issued`` via the toggle).
     Expenses are either the real logged expenses (``expense_mode="real"``) or a
-    flat-rate paušál (``expense_mode="flat"`` at ``flat_rate`` percent). The tax
+    flat-rate paušál (``expense_mode="flat"`` at ``flat_rate`` percent), or —
+    the default ``"auto"`` — whichever of the two is better: tax, social and
+    health insurance all grow with the tax base, so the better option is simply
+    the one with the larger expenses (a tie goes to the paušál). The tax
     base is compared against the admin-set rozhodná částka for the year to flag
     whether social-insurance participation arises for a secondary activity.
     """
     if date_field not in ("issued", "paid"):
         date_field = "paid"
-    if expense_mode not in ("real", "flat"):
-        expense_mode = "real"
+    if expense_mode not in ("auto", "real", "flat"):
+        expense_mode = "auto"
     if flat_rate not in EXPENSE_FLAT_RATE_CAPS:
         flat_rate = DEFAULT_FLAT_RATE_PERCENT
     paid_only = date_field == "paid"
@@ -1049,20 +1052,41 @@ def ui_tax(
     if activity_type not in ("main", "secondary"):
         activity_type = "main"
 
-    summary = compute_tax_summary(
-        income=income,
-        real_expenses=real_expenses,
-        expense_mode=expense_mode,
-        flat_rate_percent=flat_rate,
-        flat_rate_cap=EXPENSE_FLAT_RATE_CAPS[flat_rate],
-        social_threshold=social_threshold,
-        tax_rate=tax_rate,
-        social_assessment_rate=social_assessment_rate,
-        social_insurance_rate=social_insurance_rate,
-        health_assessment_rate=health_assessment_rate,
-        health_insurance_rate=health_insurance_rate,
-        activity_type=activity_type,
-    )
+    def _summary_for(mode: str) -> dict:
+        return compute_tax_summary(
+            income=income,
+            real_expenses=real_expenses,
+            expense_mode=mode,
+            flat_rate_percent=flat_rate,
+            flat_rate_cap=EXPENSE_FLAT_RATE_CAPS[flat_rate],
+            social_threshold=social_threshold,
+            tax_rate=tax_rate,
+            social_assessment_rate=social_assessment_rate,
+            social_insurance_rate=social_insurance_rate,
+            health_assessment_rate=health_assessment_rate,
+            health_insurance_rate=health_insurance_rate,
+            activity_type=activity_type,
+        )
+
+    def _burden(s: dict) -> Decimal:
+        # What the year costs: tax + health, plus social unless the vedlejší
+        # činnost is known to stay under the rozhodná částka.
+        social = s["social_insurance"] if s["social_participation"] is not False else 0
+        return s["tax"] + s["health_insurance"] + social
+
+    # `expense_choice` is what the user picked (drives the dropdown);
+    # `expense_mode` is the method actually used for the numbers below.
+    expense_choice = expense_mode
+    auto_saving = None
+    if expense_choice == "auto":
+        flat_summary, real_summary = _summary_for("flat"), _summary_for("real")
+        if flat_summary["expenses"] >= real_summary["expenses"]:
+            expense_mode, summary, other = "flat", flat_summary, real_summary
+        else:
+            expense_mode, summary, other = "real", real_summary, flat_summary
+        auto_saving = float(_burden(other) - _burden(summary))
+    else:
+        summary = _summary_for(expense_mode)
     # Hand floats to the template (the czk macro formats with %); keep the
     # social verdict as-is.
     summary_view = {
@@ -1077,6 +1101,9 @@ def ui_tax(
         selected_year   = year,
         date_field      = date_field,
         expense_mode    = expense_mode,
+        expense_choice  = expense_choice,
+        auto_saving     = auto_saving,
+        real_expenses   = float(real_expenses),
         flat_rate       = flat_rate,
         flat_rates      = EXPENSE_FLAT_RATES,
         has_threshold   = social_threshold is not None,

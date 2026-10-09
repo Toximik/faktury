@@ -365,3 +365,34 @@ def test_supplier_form_saves_activity_type(client, db_engine):
     with Session(db_engine) as s:
         p = s.exec(select(SupplierProfile).where(SupplierProfile.user_id != None)).first()
         assert p.osvc_activity_type == "secondary"
+
+
+def test_dane_page_auto_picks_flat_rate_by_default(client, db_engine):
+    # No expense_mode → auto. Income 300 000: paušál 60 % = 180 000 beats the
+    # real 50 000, so the paušál is used.
+    uid = make_user(db_engine, "alice")           # main activity
+    _seed_invoice_and_expense(db_engine, uid, 2025)
+    _login(client, "alice")
+    r = client.get("/dane?year=2025&date_field=paid")
+    assert r.status_code == 200
+    body = r.text
+    assert 'value="auto" selected' in body
+    assert "Automaticky vybrán" in body and "paušál 60 %" in body
+    # Real base 250 000 vs flat base 120 000:
+    #   tax 37 500 − 18 000, social 40 150 − 19 272, health 16 875 − 8 100
+    assert format_money(19500 + 20878 + 8775) in body
+
+
+def test_dane_page_auto_picks_real_expenses_when_higher(client, db_engine):
+    uid = make_user(db_engine, "alice")
+    _seed_invoice_and_expense(db_engine, uid, 2025)
+    with Session(db_engine) as s:
+        s.add(Expense(user_id=uid, date=date(2025, 4, 1), category="Materiál",
+                      amount=200_000, description="y"))
+        s.commit()
+    _login(client, "alice")
+    # Real 250 000 > paušál 60 % = 180 000.
+    r = client.get("/dane?year=2025&date_field=paid&expense_mode=auto")
+    assert r.status_code == 200
+    assert "Automaticky vybrány" in r.text
+    assert "(skutečné)" in r.text
