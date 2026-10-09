@@ -1197,6 +1197,47 @@ def ui_edit_invoice_page(
     return templates.TemplateResponse(request, "invoice_form.html", ctx)
 
 
+# ── GET /faktury/{id}/duplikovat  (new invoice prefilled from an old one) ──────
+
+@app.get("/faktury/{invoice_id}/duplikovat", tags=["ui"], include_in_schema=False)
+def ui_duplicate_invoice_page(
+    invoice_id: int,
+    request: Request,
+    session: Session = Depends(get_session),
+    _user: User = Depends(_get_ui_user),
+) -> Response:
+    """New-invoice form prefilled from an existing invoice (recurring billing).
+
+    Purely a form prefill: client, items, payment term/method and notes are
+    copied; the date is today and the number is the next one in the series.
+    Saving goes through the ordinary POST /invoices, so nothing is shared
+    with the original (fresh snapshots, amount recomputed server-side).
+    """
+    original = session.get(Invoice, invoice_id)
+    if original is None or original.user_id != _user.id:
+        raise HTTPException(status_code=404, detail="Invoice not found.")
+    if original.doc_type != "invoice":
+        return RedirectResponse(url=f"/faktury/{invoice_id}",
+                                status_code=status.HTTP_303_SEE_OTHER)
+
+    all_contacts = session.exec(
+        select(Contact).where(Contact.user_id == _user.id).order_by(Contact.name)
+    ).all()
+    ctx = _base_ctx(request, _user)
+    ctx.update(
+        active_nav      = "new_invoice",
+        invoice         = None,
+        copy_of         = original,
+        contacts        = all_contacts,
+        prefilled_items = original.get_items(),
+        today           = date.today().isoformat(),
+        due_days        = (original.date_due - original.date_issued).days,
+        payment_method  = original.payment_method,
+        next_vs         = get_next_variable_symbol(session, _user.id),
+    )
+    return templates.TemplateResponse(request, "invoice_form.html", ctx)
+
+
 # ── GET /faktury/{id}/dobropis  (dobropis form) ──────────────────────────
 
 @app.get("/faktury/{invoice_id}/dobropis", tags=["ui"], include_in_schema=False)

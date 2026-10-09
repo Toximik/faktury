@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% block title %}{% if credit_note_of %}Dobropis k faktuře {{ credit_note_of.variable_symbol }}{% elif invoice %}Upravit fakturu {{ invoice.variable_symbol }}{% else %}Nová faktura{% endif %}{% endblock %}
+{% block title %}{% if credit_note_of %}Dobropis k faktuře {{ credit_note_of.variable_symbol }}{% elif invoice %}Upravit fakturu {{ invoice.variable_symbol }}{% elif copy_of %}Nová faktura (kopie {{ copy_of.variable_symbol }}){% else %}Nová faktura{% endif %}{% endblock %}
 
 {% block content %}
 
@@ -7,7 +7,7 @@
 
   <div class="flex flex-wrap items-center justify-between gap-x-4 gap-y-2 mb-6">
     <h1 class="text-xl sm:text-2xl font-bold text-gray-800">
-      {% if credit_note_of %}Dobropis k faktuře {{ credit_note_of.variable_symbol }}{% elif invoice %}Upravit fakturu {{ invoice.variable_symbol }}{% else %}Nová faktura{% endif %}
+      {% if credit_note_of %}Dobropis k faktuře {{ credit_note_of.variable_symbol }}{% elif invoice %}Upravit fakturu {{ invoice.variable_symbol }}{% elif copy_of %}Nová faktura (kopie {{ copy_of.variable_symbol }}){% else %}Nová faktura{% endif %}
     </h1>
     <a href="{% if credit_note_of %}/faktury/{{ credit_note_of.id }}{% elif invoice %}/faktury/{{ invoice.id }}{% else %}/{% endif %}"
        class="text-sm text-gray-500 hover:text-gray-700 transition-colors">&larr; Zpět</a>
@@ -22,7 +22,7 @@
   <form id="invoice-form" class="space-y-6"
         {% if credit_note_of %}data-credit-note-of="{{ credit_note_of.id }}"
         data-initial-items='{{ prefilled_items | tojson }}'{% elif invoice %}data-invoice-id="{{ invoice.id }}"
-        data-initial-items='{{ invoice.get_items() | tojson }}'{% endif %}>
+        data-initial-items='{{ invoice.get_items() | tojson }}'{% elif copy_of %}data-initial-items='{{ prefilled_items | tojson }}'{% endif %}>
 
     {# ── Invoice metadata ─────────────────────────────────────────────── #}
     <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-4 sm:p-6">
@@ -78,7 +78,7 @@
             {% for c in contacts %}
             <option value="{{ c.id }}"
               data-due-days="{{ c.payment_due_days or default_due_days }}"
-              {% if invoice and invoice.contact_id == c.id %}selected{% endif %}>
+              {% if (invoice or copy_of) and (invoice or copy_of).contact_id == c.id %}selected{% endif %}>
               {{ c.name }} (IČO: {{ c.ic }})
             </option>
             {% endfor %}
@@ -152,7 +152,7 @@
                     placeholder="Doplňující informace k faktuře…"
                     class="w-full border border-gray-300 rounded-md px-3 py-2 text-sm
                            focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500
-                           resize-none">{{ invoice.notes if invoice and invoice.notes else '' }}</textarea>
+                           resize-none">{% set src = invoice or copy_of %}{{ src.notes if src and src.notes else '' }}</textarea>
         </div>
 
       </div>
