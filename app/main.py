@@ -27,7 +27,7 @@ from typing import AsyncGenerator, Optional
 from urllib.parse import urlparse
 
 from fastapi import Depends, FastAPI, File, Form, HTTPException, Request, Response, UploadFile, status
-from fastapi.responses import JSONResponse, RedirectResponse
+from fastapi.responses import FileResponse, JSONResponse, RedirectResponse
 from fastapi.security import OAuth2PasswordRequestForm
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
@@ -181,6 +181,23 @@ def _static_url(path: str) -> str:
     return f"/static/{path}?v={v}" if v else f"/static/{path}"
 
 templates.env.globals["static_url"] = _static_url
+
+# ── Well-known root files (favicon, touch icons, robots.txt) ─────────────────
+# Browsers and crawlers request these at the site root regardless of <link>
+# tags. The pages link the hashed /static/ copies (long Nginx cache); these
+# routes are the fallback for clients that ask for the root path directly.
+
+def _add_root_file(url_path: str, filename: str, media_type: str) -> None:
+    def serve() -> FileResponse:
+        return FileResponse(_APP_DIR / "static" / filename, media_type=media_type)
+    app.add_api_route(url_path, serve, methods=["GET"], include_in_schema=False)
+
+
+_add_root_file("/favicon.ico", "favicon.ico", "image/x-icon")
+_add_root_file("/robots.txt", "robots.txt", "text/plain; charset=utf-8")
+# iOS asks for both touch-icon names; one file serves them.
+_add_root_file("/apple-touch-icon.png", "apple-touch-icon.png", "image/png")
+_add_root_file("/apple-touch-icon-precomposed.png", "apple-touch-icon.png", "image/png")
 
 # ── JSON API routers ──────────────────────────────────────────────────────────
 
