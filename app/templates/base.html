@@ -8,6 +8,7 @@
   {# Self-hosted, pre-compiled Tailwind (CDN-free). Regenerate with the
      command in tailwind.config.js after changing template classes. #}
   <link rel="stylesheet" href="{{ static_url('css/tailwind.css') }}">
+  <link rel="stylesheet" href="{{ static_url('vendor/flatpickr/flatpickr.min.css') }}">
 
   {# Local overrides – minimal, see app/static/style.css #}
   <link rel="stylesheet" href="{{ static_url('style.css') }}">
@@ -191,7 +192,9 @@
   <script>
   document.addEventListener("click", (e) => {
     const btn = e.target.closest(".kebab-btn");
-    const insideMenu = e.target.closest(".kebab-menu");
+    // The date-picker calendar is appended to <body>, so clicks in it count
+    // as inside the menu that holds its input.
+    const insideMenu = e.target.closest(".kebab-menu, .flatpickr-calendar");
     if (insideMenu && !btn) return;
     document.querySelectorAll(".kebab-menu").forEach((menu) => {
       if (btn && menu === btn.nextElementSibling) menu.classList.toggle("hidden");
@@ -213,6 +216,11 @@
     });
   }
   </script>
+
+  {# Czech date picker for all <input type="date"> — see static/datepicker.js #}
+  <script src="{{ static_url('vendor/flatpickr/flatpickr.min.js') }}"></script>
+  <script src="{{ static_url('vendor/flatpickr/cs.js') }}"></script>
+  <script src="{{ static_url('datepicker.js') }}"></script>
 
   {% block scripts %}{% endblock %}
 </body>
