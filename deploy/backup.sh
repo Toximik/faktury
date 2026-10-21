@@ -21,10 +21,12 @@
 set -euo pipefail
 
 # ── Configuration ─────────────────────────────────────────────────────────────
-DB_PATH="/weby/faktury.tmcm.cz/app/faktury.db"
-UPLOADS_DIR="/weby/faktury.tmcm.cz/app/app/uploads"
-BACKUP_DIR="/data3/BACKUPS/faktury_app"
-KEEP_DAYS=90   # Delete backups older than this many days
+# Each value can be overridden from the environment (the Docker image sets
+# them to its own paths); the defaults are the systemd/venv layout.
+DB_PATH="${DB_PATH:-/weby/faktury.tmcm.cz/app/faktury.db}"
+UPLOADS_DIR="${UPLOADS_DIR:-/weby/faktury.tmcm.cz/app/app/uploads}"
+BACKUP_DIR="${BACKUP_DIR:-/data3/BACKUPS/faktury_app}"
+KEEP_DAYS="${KEEP_DAYS:-90}"   # Delete backups older than this many days
 
 # ── Checksum helpers ────────────────────────────────────────────────────────────
 # Linux ships `sha256sum`; macOS/BSD ship `shasum -a 256`. Support both so the

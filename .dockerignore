@@ -1,0 +1,13 @@
+# Keep secrets, runtime data and dev tooling out of the image.
+.env
+*.db
+backups/
+app/uploads/
+.venv/
+.tools/
+.git/
+.claude/
+.pytest_cache/
+tests/
+**/__pycache__/
+.DS_Store
