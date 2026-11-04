@@ -11,7 +11,7 @@
 # (/containers/faktury on sweetgum); see deploy/SERVER_SETUP.md for the
 # non-Docker layout.
 # =============================================================================
-FROM python:3.13.16-slim-trixie
+FROM python:3.13.18-slim-trixie
 
 # WeasyPrint needs Pango/HarfBuzz and fonts; sqlite3 is used by backup.sh.
 RUN apt-get update \
